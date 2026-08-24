@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#fbfaf7">
+<title>LEGO Vault</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+ --bg:#fbfaf7;--card:#fff;--text:#262322;--muted:#77706d;--line:#ece8e2;
+ --pink:#dc4f7c;--tomato:#c42b34;--cream:#fce9ab;--orange:#fc8a2d;--olive:#9e9820;
+ --shadow:0 10px 35px rgba(74,56,46,.06);
+}
+*{box-sizing:border-box}
+button,[role="button"],.set-open-area,.recent-card,.todo-row{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button{min-height:44px}
+button:active{transform:scale(.985)}
+.set-open-area,.recent-card,.todo-row{position:relative;z-index:1}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}
+.app-shell{min-height:100vh;display:grid;grid-template-columns:230px minmax(0,1fr)}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:230px;background:#fff;border-right:1px solid var(--line);padding:36px 20px 24px;display:flex;flex-direction:column;z-index:30}
+.sidebar-top{display:flex;justify-content:flex-end;margin-bottom:28px}
+.icon-btn{border:0;background:transparent;padding:8px;color:#222}
+.logo{margin:2px 10px 70px}
+.logo-mark{font-family:"Playfair Display",serif;font-size:78px;line-height:.8;letter-spacing:-5px}
+.logo-sub{font-size:11px;letter-spacing:4px;color:#8d8885;margin-top:18px}
+#sideNav{display:flex;flex-direction:column;gap:8px}
+#sideNav button{border:0;background:transparent;color:#333;display:flex;align-items:center;gap:16px;padding:16px 14px;border-radius:0 18px 18px 0;font-weight:600;text-align:left;position:relative}
+#sideNav button.active{background:linear-gradient(90deg,#fff 0%,#f9ecef 100%);color:var(--pink)}
+#sideNav button.active:before{content:"";position:absolute;left:-20px;top:0;bottom:0;width:4px;background:var(--pink)}
+.sidebar-foot{margin-top:auto;padding:0 12px;color:#333}
+.sidebar-foot b{display:block;font-size:14px}.sidebar-foot span{display:block;color:#8b8581;margin-top:6px;font-size:13px}
+.content{grid-column:2;padding:46px 38px 70px;max-width:1220px;width:100%;margin:0 auto}
+.page{display:none}.page.active{display:block}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:30px}
+.page-title{font-family:"Playfair Display",serif;font-size:40px;font-weight:500;letter-spacing:-1px;margin:0}
+.page-sub{font-size:18px;margin:6px 0 0;color:#373230}
+.primary-btn{border:0;background:linear-gradient(90deg,#cf275c,#dc4f7c);color:#fff;border-radius:10px;padding:14px 20px;font-weight:700;box-shadow:none}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:20px 22px;box-shadow:var(--shadow);min-height:160px}
+.stat-icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;margin-bottom:12px}
+.stat-icon.pink{background:#faedf2;color:var(--pink)}.stat-icon.orange{background:#fff2e6;color:var(--orange)}.stat-icon.olive{background:#f3f2df;color:var(--olive)}.stat-icon.cream{background:#fff8df;color:#b29b18}
+.stat-number{font-family:"Playfair Display",serif;font-size:34px;line-height:1;margin:7px 0 5px}
+.stat-card b{display:block;font-size:15px}.stat-card small{display:block;color:var(--muted);font-size:12px;margin-top:6px}
+.panel,.clean-panel{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:22px;margin-bottom:24px}
+.panel h2,.clean-panel h2{font-size:20px;margin:0 0 12px}
+.progress-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.progress-copy b{font-size:19px}.progress-copy span{display:block;color:var(--muted);font-size:13px;margin-top:4px}
+.progress-pct{color:var(--pink);font-weight:700}
+.progress-track{height:7px;background:#f0eeeb;border-radius:99px;overflow:hidden}.progress-track>div{height:100%;background:var(--pink);border-radius:99px}
+.quick-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.quick-card{border:0;background:linear-gradient(145deg,#fff 55%,#faf1f2);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:left;min-height:142px;display:flex;flex-direction:column}
+.quick-card.orange{background:linear-gradient(145deg,#fff 55%,#fff5e9)}.quick-card.olive{background:linear-gradient(145deg,#fff 55%,#f5f4e7)}
+.quick-card .stat-icon{margin-bottom:13px}.quick-card b{font-size:14px}.quick-card small{color:var(--muted);margin-top:5px}.quick-card .arrow{margin-top:auto;align-self:flex-end;font-size:26px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.section-head h2{margin:0;font-size:19px}.text-link{border:0;background:transparent;color:var(--pink);font-weight:700}
+.recent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.recent-card{border:1px solid var(--line);background:#fff;border-radius:13px;overflow:hidden;text-align:left;padding:0;display:flex;flex-direction:column;min-height:230px}
+.recent-img{height:135px;display:grid;place-items:center;background:#fff}.recent-img img{max-width:92%;max-height:122px;object-fit:contain}
+.recent-meta{padding:8px 13px 0}.recent-meta b{display:block;font-size:12px}.recent-meta span{display:block;font-size:13px;margin-top:2px;min-height:34px}
+.status-pill{display:inline-block;align-self:flex-start;margin:10px 13px 12px;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:700}
+.status-pill.built{background:#faedf2;color:var(--pink)}.status-pill.partial{background:#fff0df;color:#e37c13}.status-pill.notbuilt{background:#f2f1df;color:#858015}.status-pill.disassembled{background:#f4efea;color:#7b6b61}
+.todo-row{border:0;background:#fff;width:100%;display:grid;grid-template-columns:62px 1fr auto 20px;gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line);text-align:left}
+.todo-row:last-child{border-bottom:0}.todo-thumb{width:58px;height:44px;border-radius:10px;background:#faf8f4;display:grid;place-items:center}.todo-thumb img{max-width:52px;max-height:40px}
+.todo-copy b{display:block;font-size:13px}.todo-copy span{display:block;color:var(--muted);font-size:12px;margin-top:2px}.todo-row strong{color:var(--orange)}.chev{font-size:28px;color:#aaa}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}.input,.select{border:1px solid #ded9d3;background:#fff;border-radius:10px;padding:11px 12px}.toolbar .input{flex:1;min-width:220px}
+.btn{border:1px solid #ddd8d1;background:#fff;border-radius:10px;padding:10px 12px;font-weight:650}.btn.primary{background:#2f2b2a;color:#fff;border-color:#2f2b2a}.btn.good{background:#faedf2;color:#b52959;border-color:#f3d7e1}.btn.warn{background:#fff2e7;color:#b45d16;border-color:#f6ddc8}.btn.danger{background:#fff0ef;color:#a72d35;border-color:#f2d3d4}.btn.accent{background:var(--pink);color:#fff;border-color:var(--pink)}.btn.yellow{background:var(--cream);border-color:var(--cream)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.set-card{background:#fff;border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:var(--shadow)}.set-open-area{border:0;background:#fff;width:100%;text-align:left;padding:14px}.set-cover{height:170px;background:#fbfaf8;border-radius:11px;display:grid;place-items:center;overflow:hidden}.set-cover img{max-width:100%;max-height:100%;object-fit:contain}.set-topline{display:flex;justify-content:space-between;align-items:center;margin-top:10px}.set-topline .status-pill{margin:0}.set-num{font-size:11px;color:var(--muted)}.set-card h3{font-size:16px;margin:10px 0 4px}.small{font-size:12px;color:var(--muted)}.set-actions{display:flex;border-top:1px solid var(--line)}.mini-action{flex:1;border:0;background:#fff;padding:10px 5px;font-size:11px;color:#5c5551}.mini-action+ .mini-action{border-left:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}th{font-size:11px;color:var(--muted);text-transform:uppercase}
+.thumb{width:58px;height:58px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fafafa}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%}
+.modal{display:none;position:fixed;inset:0;background:#0007;z-index:99;padding:18px;overflow:auto}.modalbox{background:#fff;border-radius:18px;max-width:760px;margin:4vh auto;padding:22px}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.dist-row{display:grid;grid-template-columns:120px 1fr 40px;gap:12px;align-items:center;margin:14px 0}.dist-track{height:8px;background:#f0ede9;border-radius:99px;overflow:hidden}.dist-fill{height:100%}.dist-fill.built{background:var(--pink)}.dist-fill.partial{background:var(--orange)}.dist-fill.notbuilt{background:var(--olive)}.dist-fill.disassembled{background:#b9aaa0}
+.bottom{display:none}
+@media(max-width:980px){
+ .app-shell{grid-template-columns:190px 1fr}.sidebar{width:190px;padding-left:16px;padding-right:16px}.logo-mark{font-size:68px}.content{padding:36px 24px 70px}.quick-grid{grid-template-columns:repeat(3,1fr)}.recent-grid{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:700px){
+ .app-shell{display:block}.sidebar{display:none}.content{padding:20px 14px 90px;max-width:none}.page-head{margin-bottom:22px}.page-title{font-size:31px}.page-sub{font-size:15px}.stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}.stat-card{min-height:135px;padding:16px}.stat-number{font-size:29px}.quick-grid{grid-template-columns:1fr 1fr}.quick-card{min-height:126px}.recent-grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}
+ .bottom{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:80;padding-bottom:env(safe-area-inset-bottom)}.bottom button{border:0;background:#fff;padding:9px 2px;color:#6d6662;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:4px}.bottom button.active{color:var(--pink)}
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-top"><button class="icon-btn" onclick="go('settings')"><i data-lucide="settings"></i></button></div>
+    <div class="logo"><div class="logo-mark">LV</div><div class="logo-sub">LEGO VAULT</div></div>
+    <nav id="sideNav"></nav>
+    <div class="sidebar-foot"><b id="sideSetCount">0 Sets</b><span id="sidePieceCount">0 Teile</span></div>
+  </aside>
+
+  <main class="content">
+    <section id="dashboard" class="page active">
+      <div class="page-head">
+        <div><h1 class="page-title">Guten Morgen, Paula</h1><p class="page-sub">Hier ist deine LEGO® Sammlung.</p></div>
+        <button class="primary-btn" onclick="openAddSetModal()">＋ Set hinzufügen</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card"><span class="stat-icon pink"><i data-lucide="archive"></i></span><div class="stat-number" id="statSets">0</div><b>Sets</b><small>In deiner Sammlung</small></div>
+        <div class="stat-card"><span class="stat-icon pink"><i data-lucide="clipboard-check"></i></span><div class="stat-number" id="statTodo">0</div><b>To-dos</b><small>Offene Aufgaben</small></div>
+        <div class="stat-card"><span class="stat-icon orange"><i data-lucide="puzzle"></i></span><div class="stat-number" id="statPieces">0</div><b>Teile gesamt</b><small>In allen Sets</small></div>
+        <div class="stat-card"><span class="stat-icon olive"><i data-lucide="box"></i></span><div class="stat-number" id="statStored">0</div><b>Sets im Lager</b><small>Zerlegt & sortiert</small></div>
+      </div>
+
+      <div class="panel">
+        <div class="progress-row"><div class="progress-copy"><b>Fortschritt</b><span id="progressText"></span></div><div class="progress-pct" id="progressPct">0 %</div></div>
+        <div class="progress-track"><div id="mainProgress"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head"><h2>Schnellzugriff</h2></div>
+        <div class="quick-grid">
+          <button class="quick-card" onclick="go('sets')"><span class="stat-icon pink"><i data-lucide="archive"></i></span><b>Sets anzeigen</b><small>Alle Sets öffnen</small><span class="arrow">→</span></button>
+          <button class="quick-card" onclick="go('todo')"><span class="stat-icon pink"><i data-lucide="clipboard-check"></i></span><b>To-do öffnen</b><small>Deine Aufgaben</small><span class="arrow">→</span></button>
+          <button class="quick-card orange" onclick="go('parts')"><span class="stat-icon orange"><i data-lucide="puzzle"></i></span><b>Teile ansehen</b><small>Teile durchsuchen</small><span class="arrow">→</span></button>
+          <button class="quick-card olive" onclick="go('storage')"><span class="stat-icon olive"><i data-lucide="box"></i></span><b>Lager verwalten</b><small>Boxen & Fächer</small><span class="arrow">→</span></button>
+          <button class="quick-card olive" onclick="openPhotoTool()"><span class="stat-icon olive"><i data-lucide="camera"></i></span><b>Teil fotografieren</b><small>Foto aufnehmen</small><span class="arrow">→</span></button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head"><h2>Zuletzt geöffnete Sets</h2><button class="text-link" onclick="go('sets')">Alle anzeigen</button></div>
+        <div class="recent-grid" id="recentSets"></div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head"><h2>To-do Überblick</h2><button class="text-link" onclick="go('todo')">Alle anzeigen</button></div>
+        <div id="todoOverview"></div>
+      </div>
+    </section>
+
+    <section id="sets" class="page">
+      <div class="page-head"><div><h1 class="page-title">Sets</h1><p class="page-sub">Deine komplette Sammlung.</p></div><button class="primary-btn" onclick="openAddSetModal()">＋ Set hinzufügen</button></div>
+      <div class="toolbar"><input id="setSearch" class="input" placeholder="Setnummer oder Name suchen…" oninput="renderSets()"><select id="setFilter" class="select" onchange="renderSets()"><option value="all">Alle</option><option value="notbuilt">Nicht gebaut</option><option value="partial">Teilweise</option><option value="built">Fertig</option><option value="disassembled">Im Lager</option></select></div>
+      <div id="setGrid" class="grid"></div>
+    </section>
+
+    <section id="todo" class="page">
+      <div class="page-head"><div><h1 class="page-title">To-do</h1><p class="page-sub">Offene Sets und einzelne Teile.</p></div></div>
+      <div class="panel"><div class="progress-track"><div id="todoProgress"></div></div><p id="todoText" class="small"></p></div>
+      <div id="todoGrid" class="grid"></div>
+    </section>
+
+    <section id="setdetail" class="page">
+      <div class="toolbar"><button class="btn" onclick="go('sets')">← Zurück zu Sets</button></div>
+      <div id="setDetailHero"></div>
+      <div class="panel">
+        <div class="toolbar"><input id="detailPartSearch" class="input" placeholder="Teil in diesem Set suchen…" oninput="renderSetDetailParts()"><select id="detailPartFilter" class="select" onchange="renderSetDetailParts()"><option value="all">Alle Teile</option><option value="open">Noch offen</option><option value="done">Abgehakt</option></select></div>
+        <div id="setDetailParts"></div>
+      </div>
+    </section>
+
+    <section id="parts" class="page">
+      <div class="page-head"><div><h1 class="page-title">Teile</h1><p class="page-sub">Lose Teile und Teile aus deinen Sets.</p></div><button class="primary-btn" onclick="openPhotoTool()">Teil fotografieren</button></div>
+      <div class="toolbar"><input id="partSearch" class="input" placeholder="Teilnummer, Name oder Farbe…" oninput="renderParts()"><button class="btn primary" onclick="openPartModal()">＋ loses Teil</button></div>
+      <div class="panel"><h2>Lose Teile</h2><div id="partsTable"></div></div>
+      <div class="panel"><h2>Teile aus deinen Sets</h2><div id="catalogTable"></div></div>
+    </section>
+
+    <section id="storage" class="page">
+      <div class="page-head"><div><h1 class="page-title">Lager</h1><p class="page-sub">Schrank, Box und Fach verwalten.</p></div><button class="primary-btn" onclick="openLocationModal()">＋ Lagerplatz</button></div>
+      <div class="panel"><div id="locationsTable"></div></div>
+    </section>
+
+    <section id="statistics" class="page">
+      <div class="page-head"><div><h1 class="page-title">Statistiken</h1><p class="page-sub">Deine Sammlung auf einen Blick.</p></div></div>
+      <div id="statisticsBody"></div>
+    </section>
+
+    <section id="settings" class="page">
+      <div class="page-head"><div><h1 class="page-title">Mehr</h1><p class="page-sub">Cloud, Rebrickable und Backup.</p></div></div>
+
+      <div class="panel">
+        <div class="section-head"><h2>Cloud-Synchronisierung</h2><span id="cloudBadge" class="status-pill notbuilt">Nicht verbunden</span></div>
+        <p class="small">Bau-Status, Häkchen, Sets, To-dos und Lager werden zwischen iPhone, iPad und Laptop synchronisiert. Nach der ersten Anmeldung bleibt die Sitzung gespeichert und wird beim nächsten Öffnen automatisch wiederhergestellt.</p>
+        <div id="cloudSetup">
+        <div class="formgrid">
+          <div class="field" style="grid-column:1/-1"><label>Supabase Publishable Key</label><input id="supabaseKey" class="input" type="password" placeholder="sb_publishable_…"></div>
+          <div class="field"><label>E-Mail</label><input id="cloudEmail" class="input" type="email" autocomplete="email"></div>
+          <div class="field"><label>Passwort</label><input id="cloudPassword" class="input" type="password" autocomplete="current-password"></div>
+        </div>
+        <div class="toolbar" style="margin-top:14px"><button class="btn primary" onclick="saveCloudConfig()">Cloud verbinden</button><button class="btn" onclick="cloudSignUp()">Konto erstellen</button><button class="btn" onclick="cloudSignIn()">Anmelden</button><button class="btn" onclick="cloudPull()">Cloud laden</button><button class="btn" onclick="cloudPush()">Jetzt synchronisieren</button><button class="btn danger" onclick="cloudSignOut()">Abmelden</button></div>
+        <p id="cloudState" class="small">Noch nicht verbunden.</p>
+        </div>
+        <div class="toolbar" style="margin-top:12px"><button class="btn" onclick="toggleCloudSetup()">Verbindung verwalten</button></div>
+      </div>
+
+      <div class="panel"><h2>Rebrickable</h2><p class="small">Der API-Key wird auf diesem Gerät gespeichert und nach dem Schließen automatisch wieder eingesetzt.</p><input id="apiKey" class="input" type="password" style="width:100%" placeholder="Rebrickable API-Key"><div class="toolbar" style="margin-top:14px"><button class="btn primary" onclick="saveApi()">Key speichern</button><button class="btn" onclick="testApi()">API testen</button><button class="btn yellow" onclick="loadWholeCollection()">Alle Set-Inventare laden</button></div><p id="apiState" class="small"></p><div id="apiProgressWrap" style="display:none;margin-top:12px"><div class="progress-track"><div id="apiProgress"></div></div><p id="apiProgressText" class="small"></p></div></div>
+      <div class="panel"><h2>Geladene Set-Inventare</h2><div id="inventoryState" class="small"></div></div>
+      <div class="panel"><h2>Backup</h2><div class="toolbar"><button class="btn" onclick="exportBackup()">Backup herunterladen</button><label class="btn">Backup importieren<input hidden type="file" accept=".json" onchange="importBackup(event)"></label></div></div>
+      <div class="panel"><h2>Zurücksetzen</h2><button class="btn danger" onclick="resetApp()">Alle App-Daten zurücksetzen</button></div>
+    </section>
+  </main>
+</div>
+
+<div class="bottom" id="bottomnav"></div>
+<input id="cameraInput" type="file" accept="image/*" capture="environment" hidden onchange="handlePhoto(event)">
+<div class="modal" id="modal"><div class="modalbox" id="modalbox"></div></div>
+
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+
+const INITIAL_SETS=[{"key": "76038-1", "number": "76038", "copy": 1, "name": "Attack on Avengers Tower", "pieces": 515}, {"key": "76269-1", "number": "76269", "copy": 1, "name": "Avengers Tower", "pieces": 5201}, {"key": "76307-1", "number": "76307", "copy": 1, "name": "Iron Man Mech vs. Ultron", "pieces": 101}, {"key": "76313-1", "number": "76313", "copy": 1, "name": "MARVEL Logo & Minifigures", "pieces": 931}, {"key": "75137-1", "number": "75137", "copy": 1, "name": "Carbon-Freezing Chamber", "pieces": 231}, {"key": "75118-1", "number": "75118", "copy": 1, "name": "Captain Phasma™", "pieces": 82}, {"key": "75110-1", "number": "75110", "copy": 1, "name": "Luke Skywalker™", "pieces": 83}, {"key": "9678-1", "number": "9678", "copy": 1, "name": "Twin-pod Cloud Car™ & Bespin™", "pieces": 78}, {"key": "42077-1", "number": "42077", "copy": 1, "name": "Rally Car", "pieces": 1005}, {"key": "31081-1", "number": "31081", "copy": 1, "name": "Modular Skate House", "pieces": 422}, {"key": "31071-1", "number": "31071", "copy": 1, "name": "Drone Explorer", "pieces": 109}, {"key": "10281-1", "number": "10281", "copy": 1, "name": "Bonsai Tree", "pieces": 878}, {"key": "40460-1", "number": "40460", "copy": 1, "name": "Roses", "pieces": 120}, {"key": "10329-1", "number": "10329", "copy": 1, "name": "Tiny Plants", "pieces": 758}, {"key": "41907-1", "number": "41907", "copy": 1, "name": "Desk Organizer", "pieces": 405}, {"key": "3866-1", "number": "3866", "copy": 1, "name": "Star Wars™: The Battle of Hoth™", "pieces": 305}, {"key": "79102-1", "number": "79102", "copy": 1, "name": "Stealth Shell in Pursuit", "pieces": 162}, {"key": "10362-1", "number": "10362", "copy": 1, "name": "French Café", "pieces": 1101}, {"key": "75393-1", "number": "75393", "copy": 1, "name": "TIE Fighter & X-Wing Mash-up", "pieces": 1063}, {"key": "75345-1", "number": "75345", "copy": 1, "name": "501st Clone Troopers™ Battle Pack", "pieces": 119}, {"key": "11508-1", "number": "11508", "copy": 1, "name": "Daisies", "pieces": 133}, {"key": "31380-1", "number": "31380", "copy": 1, "name": "Retro Gaming Console", "pieces": 268}, {"key": "75379-1", "number": "75379", "copy": 1, "name": "R2-D2™", "pieces": 1050}, {"key": "60182-1", "number": "60182", "copy": 1, "name": "Pickup & Caravan", "pieces": 344}, {"key": "41561-1", "number": "41561", "copy": 1, "name": "Tapsy", "pieces": 57}, {"key": "60263-1", "number": "60263", "copy": 1, "name": "Ocean Mini-Submarine", "pieces": 41}, {"key": "60290-1", "number": "60290", "copy": 1, "name": "Skate Park", "pieces": 195}, {"key": "10242-1", "number": "10242", "copy": 1, "name": "MINI Cooper", "pieces": 1077}, {"key": "43112-1", "number": "43112", "copy": 1, "name": "Robo HipHop Car", "pieces": 387}, {"key": "21276-1", "number": "21276", "copy": 1, "name": "The Creeper™", "pieces": 665}, {"key": "75877-1", "number": "75877", "copy": 1, "name": "Mercedes-AMG GT3", "pieces": 196}, {"key": "76047-1", "number": "76047", "copy": 1, "name": "Black Panther Pursuit", "pieces": 287}, {"key": "5887-1", "number": "5887", "copy": 1, "name": "Dino Defense HQ", "pieces": 793}, {"key": "70615-1", "number": "70615", "copy": 1, "name": "Fire Mech", "pieces": 944}, {"key": "75946-1", "number": "75946", "copy": 1, "name": "Hungarian Horntail Triwizard Challenge", "pieces": 265}, {"key": "41364-1", "number": "41364", "copy": 1, "name": "Stephanie's Buggy & Trailer", "pieces": 166}, {"key": "60247-1", "number": "60247", "copy": 1, "name": "Forest Fire", "pieces": 84}, {"key": "70661-1", "number": "70661", "copy": 1, "name": "Spinjitzu Zane", "pieces": 109}, {"key": "60221-1", "number": "60221", "copy": 1, "name": "Diving Yacht", "pieces": 148}, {"key": "60252-1", "number": "60252", "copy": 1, "name": "Construction Bulldozer", "pieces": 126}, {"key": "76917-1", "number": "76917", "copy": 1, "name": "2 Fast 2 Furious Nissan Skyline GT-R (R34)", "pieces": 319}, {"key": "60283-1", "number": "60283", "copy": 1, "name": "Holiday Camper Van", "pieces": 190}, {"key": "60284-1", "number": "60284", "copy": 1, "name": "Roadwork Truck", "pieces": 58}, {"key": "60265-1", "number": "60265", "copy": 1, "name": "Ocean Exploration Base", "pieces": 497}, {"key": "60213-1", "number": "60213", "copy": 1, "name": "Dock Side Fire", "pieces": 97}, {"key": "21154-1", "number": "21154", "copy": 1, "name": "The Blaze Bridge", "pieces": 372}, {"key": "60212-1", "number": "60212", "copy": 1, "name": "Barbecue Burn Out", "pieces": 64}, {"key": "60246-1", "number": "60246", "copy": 1, "name": "Police Station", "pieces": 743}, {"key": "76895-1", "number": "76895", "copy": 1, "name": "Ferrari F8 Tributo", "pieces": 275}, {"key": "75969-1", "number": "75969", "copy": 1, "name": "Hogwarts™ Astronomy Tower", "pieces": 971}, {"key": "60242-1", "number": "60242", "copy": 1, "name": "Police Highway Arrest", "pieces": 185}, {"key": "70423-1", "number": "70423", "copy": 1, "name": "Paranormal Intercept Bus 3000", "pieces": 689}, {"key": "77251-1", "number": "77251", "copy": 1, "name": "McLaren F1® Team MCL38 Race Car", "pieces": 269}, {"key": "72046-1", "number": "72046", "copy": 1, "name": "Game Boy™", "pieces": 421}, {"key": "75126-1", "number": "75126", "copy": 1, "name": "First Order Snowspeeder™", "pieces": 91}, {"key": "60191-1", "number": "60191", "copy": 1, "name": "Arctic Exploration Team", "pieces": 70}, {"key": "60219-1", "number": "60219", "copy": 1, "name": "Construction Loader", "pieces": 88}, {"key": "60208-1", "number": "60208", "copy": 1, "name": "Sky Police Parachute Arrest", "pieces": 218}, {"key": "11007-1", "number": "11007", "copy": 1, "name": "Creative Green Bricks", "pieces": 60}, {"key": "60242-2", "number": "60242", "copy": 2, "name": "Police Highway Arrest", "pieces": 185}, {"key": "60243-1", "number": "60243", "copy": 1, "name": "Police Helicopter Chase", "pieces": 212}, {"key": "60255-1", "number": "60255", "copy": 1, "name": "Stunt Team", "pieces": 62}, {"key": "60253-1", "number": "60253", "copy": 1, "name": "Ice-Cream Truck", "pieces": 200}, {"key": "75957-1", "number": "75957", "copy": 1, "name": "The Knight Bus™", "pieces": 403}, {"key": "75945-1", "number": "75945", "copy": 1, "name": "Expecto Patronum", "pieces": 121}, {"key": "76388-1", "number": "76388", "copy": 1, "name": "Hogsmeade™ Village Visit", "pieces": 851}, {"key": "75947-1", "number": "75947", "copy": 1, "name": "Hagrid's Hut: Buckbeak's Rescue", "pieces": 496}, {"key": "75966-1", "number": "75966", "copy": 1, "name": "Hogwarts™ Room of Requirement", "pieces": 193}, {"key": "21176-1", "number": "21176", "copy": 1, "name": "The Jungle Abomination", "pieces": 489}, {"key": "21164-1", "number": "21164", "copy": 1, "name": "The Coral Reef", "pieces": 92}, {"key": "71377-1", "number": "71377", "copy": 1, "name": "King Boo and the Haunted Yard Expansion Set", "pieces": 431}, {"key": "42165-1", "number": "42165", "copy": 1, "name": "Mercedes-AMG F1 W14 E Performance Pull-Back", "pieces": 240}, {"key": "71746-1", "number": "71746", "copy": 1, "name": "Jungle Dragon", "pieces": 506}, {"key": "75337-1", "number": "75337", "copy": 1, "name": "AT-TE™ Walker", "pieces": 1082}, {"key": "10311-1", "number": "10311", "copy": 1, "name": "Orchid", "pieces": 608}, {"key": "70682-1", "number": "70682", "copy": 1, "name": "Spinjitzu Slam - Jay", "pieces": 72}, {"key": "77241-1", "number": "77241", "copy": 1, "name": "2 Fast 2 Furious Honda S2000", "pieces": 300}, {"key": "76917-2", "number": "76917", "copy": 2, "name": "2 Fast 2 Furious Nissan Skyline GT-R (R34)", "pieces": 319}, {"key": "10343-1", "number": "10343", "copy": 1, "name": "Mini Orchid", "pieces": 274}, {"key": "75389-1", "number": "75389", "copy": 1, "name": "The Dark Falcon", "pieces": 1579}, {"key": "75317-1", "number": "75317", "copy": 1, "name": "The Mandalorian™ & the Child", "pieces": 295}, {"key": "75359-1", "number": "75359", "copy": 1, "name": "332nd Ahsoka's Clone Trooper™ Battle Pack", "pieces": 108}, {"key": "75347-1", "number": "75347", "copy": 1, "name": "TIE Bomber™", "pieces": 625}, {"key": "70428-1", "number": "70428", "copy": 1, "name": "Jack's Beach Buggy", "pieces": 170}, {"key": "70680-1", "number": "70680", "copy": 1, "name": "Monastery Training", "pieces": 122}, {"key": "70841-1", "number": "70841", "copy": 1, "name": "Benny's Space Squad", "pieces": 68}, {"key": "9442-1", "number": "9442", "copy": 1, "name": "Jay's Storm Fighter", "pieces": 243}, {"key": "31105-1", "number": "31105", "copy": 1, "name": "Townhouse Toy Store", "pieces": 554}, {"key": "40725-1", "number": "40725", "copy": 1, "name": "Cherry Blossoms", "pieces": 430}, {"key": "10349-1", "number": "10349", "copy": 1, "name": "Happy Plants", "pieces": 217}, {"key": "31212-1", "number": "31212", "copy": 1, "name": "The Milky Way Galaxy", "pieces": 3091}, {"key": "31206-1", "number": "31206", "copy": 1, "name": "The Rolling Stones", "pieces": 1998}, {"key": "31169-1", "number": "31169", "copy": 1, "name": "Typewriter with Flowers", "pieces": 363}];
+const KEY="lego-vault-complete-v1";
+let db=JSON.parse(localStorage.getItem(KEY)||"null")||{sets:INITIAL_SETS,status:{},parts:[],locations:[],apiKey:"",inventories:{},setDetails:{},partChecks:{}};
+db.sets=db.sets||INITIAL_SETS;db.status=db.status||{};db.parts=db.parts||[];db.locations=db.locations||[];db.inventories=db.inventories||{};db.setDetails=db.setDetails||{};db.partChecks=db.partChecks||{};db.recentSets=db.recentSets||[];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const uid=()=>Math.random().toString(36).slice(2,10);
+const NAV=[["dashboard","house","Übersicht"],["sets","archive","Sets"],["todo","clipboard-check","To-do"],["parts","puzzle","Teile"],["storage","box","Lager"],["statistics","chart-no-axes-column","Statistiken"],["settings","ellipsis","Mehr"]];
+let cloudClient=null, cloudUser=null, cloudTimer=null, cloudBusy=false;
+const SUPABASE_URL="https://ukjvwciamwsomizawkxa.supabase.co";
+const SUPABASE_KEY_STORAGE="lego-vault-supabase-publishable-key";
+
+
+const CLOUD_EMAIL_STORAGE="lego-vault-cloud-email";
+const CLOUD_SETUP_OPEN_STORAGE="lego-vault-cloud-setup-open";
+function rememberCloudEmail(email){
+  if(email) localStorage.setItem(CLOUD_EMAIL_STORAGE,email);
+}
+function restoreCloudEmail(){
+  const email=localStorage.getItem(CLOUD_EMAIL_STORAGE)||"";
+  if($("cloudEmail") && !$("cloudEmail").value) $("cloudEmail").value=email;
+}
+function setCloudSetupVisible(show){
+  const box=$("cloudSetup"); if(!box)return;
+  box.style.display=show?"block":"none";
+  localStorage.setItem(CLOUD_SETUP_OPEN_STORAGE,show?"1":"0");
+}
+function toggleCloudSetup(){
+  const box=$("cloudSetup"); if(!box)return;
+  setCloudSetupVisible(box.style.display==="none");
+}
+function refreshCloudUI(){
+  const badge=$("cloudBadge");
+  if(badge){
+    if(cloudUser){
+      badge.textContent="Verbunden";
+      badge.className="status-pill built";
+    }else if(localStorage.getItem(SUPABASE_KEY_STORAGE)){
+      badge.textContent="Bereit";
+      badge.className="status-pill partial";
+    }else{
+      badge.textContent="Nicht verbunden";
+      badge.className="status-pill notbuilt";
+    }
+  }
+  restoreCloudEmail();
+  const configured=!!localStorage.getItem(SUPABASE_KEY_STORAGE);
+  const explicitOpen=localStorage.getItem(CLOUD_SETUP_OPEN_STORAGE)==="1";
+  if(configured && cloudUser && !explicitOpen) setCloudSetupVisible(false);
+  else if($("cloudSetup") && $("cloudSetup").style.display==="") setCloudSetupVisible(!configured || explicitOpen);
+}
+let cloudDirty=false;
+let lastCloudSyncAt=0;
+
+function cloudPayload(){
+  // Sync only the important user data. Large Rebrickable inventories stay cached locally,
+  // which makes sync much faster and more reliable.
+  return {
+    sets: JSON.parse(JSON.stringify(db.sets||[])),
+    status: JSON.parse(JSON.stringify(db.status||{})),
+    parts: (db.parts||[]).map(p=>{
+      const x={...p};
+      // Camera photos can be very large. Keep them local for now instead of breaking cloud sync.
+      delete x.image;
+      return x;
+    }),
+    locations: JSON.parse(JSON.stringify(db.locations||[])),
+    partChecks: JSON.parse(JSON.stringify(db.partChecks||{})),
+    recentSets: JSON.parse(JSON.stringify(db.recentSets||[])),
+    setDetails: JSON.parse(JSON.stringify(db.setDetails||{}))
+  };
+}
+function localSaveOnly(){
+  localStorage.setItem(KEY,JSON.stringify(db));
+}
+function activePageId(){
+  return document.querySelector(".page.active")?.id||"dashboard";
+}
+function renderActivePage(){
+  const p=activePageId();
+  if(p==="dashboard") renderStats();
+  else if(p==="sets") renderSets();
+  else if(p==="todo") renderTodo();
+  else if(p==="parts"){renderParts();renderCatalog()}
+  else if(p==="storage") renderLocations();
+  else if(p==="statistics") renderStatistics();
+  else if(p==="setdetail") renderSetDetail();
+  else if(p==="settings") renderInventoryState();
+  if($("apiKey")) $("apiKey").value=db.apiKey||"";
+  if($("supabaseKey")) $("supabaseKey").value=localStorage.getItem(SUPABASE_KEY_STORAGE)||"";
+  refreshCloudUI();
+  setTimeout(()=>window.lucide?.createIcons(),0);
+}
+function save(){
+  localSaveOnly();
+  cloudDirty=true;
+  renderActivePage();
+  // Dashboard counters can change even when another page is active.
+  if(activePageId()!=="dashboard") {
+    const s=$("sideSetCount"), p=$("sidePieceCount");
+    if(s) s.textContent=(db.sets||[]).length+" Sets";
+    if(p) p.textContent=(db.sets||[]).reduce((a,x)=>a+(+x.pieces||0),0).toLocaleString("de-DE")+" Teile";
+  }
+  scheduleCloudPush();
+}
+function scheduleCloudPush(){
+  if(!cloudClient || !cloudUser || cloudBusy) return;
+  clearTimeout(cloudTimer);
+  cloudTimer=setTimeout(()=>cloudPush(true),1100);
+}
+function cloudMessage(msg,ok=true){
+  const el=$("cloudState");
+  if(el){ el.textContent=msg; el.style.color=ok?"#5e5854":"#C42B34"; }
+  refreshCloudUI();
+}
+function initCloudClient(){
+  const key=localStorage.getItem(SUPABASE_KEY_STORAGE)||"";
+  if($("supabaseKey") && !$("supabaseKey").value) $("supabaseKey").value=key;
+  restoreCloudEmail();
+  if(!key || !window.supabase){ cloudClient=null; return false; }
+  cloudClient=window.supabase.createClient(SUPABASE_URL,key,{
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+  });
+  return true;
+}
+async function refreshCloudSession(){
+  if(!initCloudClient()) { cloudMessage("Publishable Key eintragen und „Cloud verbinden“ drücken."); return; }
+  const {data,error}=await cloudClient.auth.getSession();
+  if(error){ cloudMessage("Cloud-Fehler: "+error.message,false); return; }
+  cloudUser=data.session?.user||null;
+  if(cloudUser){
+    setCloudSetupVisible(false);
+    cloudMessage("Verbunden · Daten werden automatisch synchronisiert.");
+    await cloudPull(true);
+  }else{
+    cloudMessage("Cloud bereit · bitte einmal anmelden.");
+  }
+}
+function saveCloudConfig(){
+  const key=($("supabaseKey")?.value||"").trim();
+  if(!key){ cloudMessage("Bitte den Publishable Key einfügen.",false); return false; }
+  localStorage.setItem(SUPABASE_KEY_STORAGE,key);
+  initCloudClient();
+  cloudMessage("Cloud-Verbindung gespeichert. Jetzt anmelden.");
+  return true;
+}
+async function cloudSignUp(){
+  if(!saveCloudConfig() || !cloudClient)return;
+  const email=($("cloudEmail")?.value||"").trim();
+  const password=$("cloudPassword")?.value||"";
+  rememberCloudEmail(email);
+  if(!email || password.length<6){ cloudMessage("E-Mail und ein Passwort mit mindestens 6 Zeichen eingeben.",false); return; }
+  cloudMessage("Konto wird erstellt …");
+  const {data,error}=await cloudClient.auth.signUp({email,password});
+  if(error){ cloudMessage("Konto konnte nicht erstellt werden: "+error.message,false); return; }
+  cloudUser=data.session?.user||null;
+  if(cloudUser){
+    setCloudSetupVisible(false);
+    cloudMessage("Konto erstellt · erster Stand wird gespeichert …");
+    await cloudPush();
+  }else{
+    cloudMessage("Konto erstellt. Bestätige ggf. einmal die E-Mail und tippe danach auf „Anmelden“.");
+  }
+}
+async function cloudSignIn(){
+  if(!saveCloudConfig() || !cloudClient)return;
+  const email=($("cloudEmail")?.value||"").trim();
+  const password=$("cloudPassword")?.value||"";
+  rememberCloudEmail(email);
+  if(!email || !password){cloudMessage("Bitte E-Mail und Passwort eingeben.",false);return}
+  cloudMessage("Anmeldung …");
+  const {data,error}=await cloudClient.auth.signInWithPassword({email,password});
+  if(error){ cloudMessage("Anmeldung fehlgeschlagen: "+error.message,false); return; }
+  cloudUser=data.user;
+  setCloudSetupVisible(false);
+  cloudMessage("Verbunden · Cloud wird geladen …");
+  await cloudPull();
+}
+async function cloudSignOut(){
+  if(cloudClient) await cloudClient.auth.signOut();
+  cloudUser=null;
+  cloudDirty=false;
+  setCloudSetupVisible(true);
+  cloudMessage("Abgemeldet. Lokale Daten bleiben auf diesem Gerät.");
+}
+async function cloudPush(silent=false){
+  if(cloudBusy)return;
+  if(!cloudClient || !cloudUser){ if(!silent) cloudMessage("Bitte zuerst anmelden.",false); return; }
+  cloudBusy=true;
+  if(!silent) cloudMessage("Synchronisiere …");
+  try{
+    const payload={device_key:cloudUser.id,data:cloudPayload(),updated_at:new Date().toISOString()};
+    const {data:rows,error:readError}=await cloudClient
+      .from("lego_data").select("id").eq("device_key",cloudUser.id)
+      .order("updated_at",{ascending:false}).limit(1);
+    if(readError) throw readError;
+
+    let error=null;
+    if(rows?.length){
+      ({error}=await cloudClient.from("lego_data")
+        .update({data:payload.data,updated_at:payload.updated_at})
+        .eq("id",rows[0].id));
+    }else{
+      // Important: first sync now really creates the row.
+      ({error}=await cloudClient.from("lego_data").insert(payload));
+    }
+    if(error) throw error;
+    cloudDirty=false;
+    lastCloudSyncAt=Date.now();
+    cloudMessage("Synchronisiert ✓");
+  }catch(e){
+    cloudMessage("Synchronisierung fehlgeschlagen: "+e.message,false);
+  }finally{
+    cloudBusy=false;
+  }
+}
+function mergeCloudData(incoming){
+  const localApi=db.apiKey||"";
+  const localInventories=db.inventories||{};
+  const localDetails=db.setDetails||{};
+  const localImages=new Map((db.parts||[]).map(p=>[p.id,p.image||""]));
+
+  const incomingParts=(incoming.parts||[]).map(p=>({
+    ...p,
+    image:localImages.get(p.id)||p.image||""
+  }));
+
+  db={
+    sets:incoming.sets||INITIAL_SETS,
+    status:incoming.status||{},
+    parts:incomingParts,
+    locations:incoming.locations||[],
+    apiKey:localApi,
+    // Keep heavy Rebrickable cache local, but merge small set details.
+    inventories:localInventories,
+    setDetails:{...localDetails,...(incoming.setDetails||{})},
+    partChecks:incoming.partChecks||{},
+    recentSets:incoming.recentSets||[]
+  };
+}
+async function cloudPull(silent=false){
+  if(cloudBusy)return;
+  if(!cloudClient || !cloudUser){ if(!silent) cloudMessage("Bitte zuerst anmelden.",false); return; }
+  if(cloudDirty && silent) return; // Never overwrite a local change waiting to upload.
+  cloudBusy=true;
+  if(!silent) cloudMessage("Lade Cloud-Daten …");
+  try{
+    const {data:rows,error}=await cloudClient.from("lego_data")
+      .select("data,updated_at").eq("device_key",cloudUser.id)
+      .order("updated_at",{ascending:false}).limit(1);
+    if(error) throw error;
+
+    if(rows?.length && rows[0].data){
+      mergeCloudData(rows[0].data);
+      localSaveOnly();
+      cloudDirty=false;
+      lastCloudSyncAt=Date.now();
+      renderActivePage();
+      cloudMessage("Cloud-Daten geladen ✓");
+    }else{
+      // First device / first login: create cloud state directly.
+      const payload={device_key:cloudUser.id,data:cloudPayload(),updated_at:new Date().toISOString()};
+      const {error:insertError}=await cloudClient.from("lego_data").insert(payload);
+      if(insertError) throw insertError;
+      cloudDirty=false;
+      lastCloudSyncAt=Date.now();
+      cloudMessage("Erster Cloud-Stand gespeichert ✓");
+    }
+  }catch(e){
+    cloudMessage("Cloud konnte nicht geladen werden: "+e.message,false);
+  }finally{
+    cloudBusy=false;
+  }
+}
+function startCloudAutoRefresh(){
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible" && cloudUser && !cloudDirty) cloudPull(true);
+  });
+  setInterval(()=>{
+    if(cloudUser && !cloudDirty && !cloudBusy) cloudPull(true);
+  },20000);
+}
+function go(p){
+  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+  const target=$(p); if(target) target.classList.add("active");
+  document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x.dataset.page===p));
+  renderActivePage();
+}
+function icon(name,size=20){return `<i data-lucide="${name}" style="width:${size}px;height:${size}px"></i>`}
+function buildNav(){
+  const side=$("sideNav"), bottom=$("bottomnav");
+  if(side) side.innerHTML=NAV.map(x=>`<button data-page="${x[0]}" onclick="go('${x[0]}')">${icon(x[1],20)}<span>${x[2]}</span></button>`).join("");
+  if(bottom) bottom.innerHTML=NAV.slice(0,5).map(x=>`<button data-page="${x[0]}" onclick="go('${x[0]}')">${icon(x[1],19)}<span>${x[2]}</span></button>`).join("");
+  setTimeout(()=>window.lucide?.createIcons(),0);
+}
+function statusOf(k){return db.status[k]||"notbuilt"}
+function statusLabel(s){return {notbuilt:"Nicht gebaut",partial:"Teilweise",built:"Fertig",disassembled:"Im Lager"}[s]}
+function setStatus(k,s){
+  if(s==="built"){ markWholeSetBuilt(k); return; }
+  db.status[k]=s;
+  // If the whole-set "Fertig" state is removed, individual manual checks remain independent.
+  save();
+}
+function setImageUrl(n){return db.setDetails?.[n]?.set_img_url||`https://cdn.rebrickable.com/media/sets/${encodeURIComponent(n)}-1/180x180.jpg`}
+function setCard(s){
+  let st=statusOf(s.key),copy=s.copy>1?` · Exemplar ${s.copy}`:"";
+  return `<article class="set-card clean-set">
+    <button class="set-open-area" onclick="openSetDetail('${s.key}')">
+      <div class="set-cover"><img src="${setImageUrl(s.number)}" alt="" onerror="this.style.display='none'"></div>
+      <div class="set-topline"><span class="status-pill ${st}">${statusLabel(st)}</span><span class="set-num">#${esc(s.number)}${copy}</span></div>
+      <h3>${esc(s.name)}</h3>
+      <div class="small">${Number(s.pieces).toLocaleString("de-DE")} Teile</div>
+    </button>
+    <div class="set-actions">
+      <button class="mini-action" onclick="markWholeSetBuilt('${s.key}')">Fertig</button>
+      <button class="mini-action" onclick="setStatus('${s.key}','partial')">Teilweise</button>
+      <button class="mini-action" onclick="setStatus('${s.key}','notbuilt')">Nicht gebaut</button>
+    </div>
+  </article>`;
+}
+function renderStats(){
+  const built=db.sets.filter(s=>statusOf(s.key)==="built").length,
+        total=db.sets.length,
+        pieces=db.sets.reduce((a,s)=>a+(+s.pieces||0),0),
+        storedSets=db.sets.filter(s=>statusOf(s.key)==="disassembled").length,
+        todoCount=db.sets.filter(s=>statusOf(s.key)!=="built").length,
+        pct=total?Math.round(built/total*100):0;
+  $("statSets").textContent=total.toLocaleString("de-DE");
+  $("statTodo").textContent=todoCount.toLocaleString("de-DE");
+  $("statPieces").textContent=pieces.toLocaleString("de-DE");
+  $("statStored").textContent=storedSets.toLocaleString("de-DE");
+  $("mainProgress").style.width=pct+"%";
+  $("progressPct").textContent=pct+" %";
+  $("progressText").textContent=`${built} von ${total} Sets fertig`;
+  $("sideSetCount").textContent=total+" Sets";
+  $("sidePieceCount").textContent=pieces.toLocaleString("de-DE")+" Teile";
+
+  const recent=(db.recentSets||[]).map(k=>db.sets.find(s=>s.key===k)).filter(Boolean);
+  const recentList=(recent.length?recent:db.sets.slice(0,4)).slice(0,4);
+  $("recentSets").innerHTML=recentList.map(s=>{
+    const st=statusOf(s.key), label=statusLabel(st);
+    return `<button class="recent-card" onclick="openSetDetail('${s.key}')">
+      <div class="recent-img"><img src="${setImageUrl(s.number)}" alt="" onerror="this.style.display='none'"></div>
+      <div class="recent-meta"><b>${esc(s.number)}</b><span>${esc(s.name)}</span></div>
+      <span class="status-pill ${st}">${label}</span>
+    </button>`;
+  }).join("");
+
+  const todo=db.sets.filter(s=>statusOf(s.key)!=="built").slice(0,3);
+  $("todoOverview").innerHTML=todo.length?todo.map(s=>{
+    const inv=db.inventories[s.number]||[];
+    const all=inv.filter(x=>!x.is_spare);
+    const done=all.filter(x=>isPartChecked(s.key,x)).length;
+    const pp=all.length?Math.round(done/all.length*100):(statusOf(s.key)==="partial"?50:0);
+    return `<button class="todo-row" onclick="openSetDetail('${s.key}')">
+      <div class="todo-thumb"><img src="${setImageUrl(s.number)}" alt="" onerror="this.style.display='none'"></div>
+      <div class="todo-copy"><b>${esc(s.number)} – ${esc(s.name)}</b><span>${all.length?`Noch ${Math.max(0,all.length-done)} Teile zu erledigen`:"Noch offen"}</span></div>
+      <strong>${pp} %</strong><span class="chev">›</span>
+    </button>`;
+  }).join(""):`<div class="empty">Alles erledigt.</div>`;
+}
+function renderSets(){let q=($("setSearch")?.value||"").toLowerCase(),f=$("setFilter")?.value||"all";let list=db.sets.filter(s=>(s.number+" "+s.name).toLowerCase().includes(q)).filter(s=>f==="all"||statusOf(s.key)===f);$("setGrid").innerHTML=list.map(setCard).join("")||`<div class="empty">Keine Sets gefunden.</div>`}
+function renderTodo(){let todo=db.sets.filter(s=>statusOf(s.key)!=="built"),built=db.sets.length-todo.length,pct=db.sets.length?Math.round(built/db.sets.length*100):0;$("todoProgress").style.width=pct+"%";$("todoText").textContent=`${built} fertig · ${todo.length} noch offen`;$("todoGrid").innerHTML=todo.map(setCard).join("")||`<div class="empty">🎉 Nichts mehr offen.</div>`}
+function locName(id){let l=db.locations.find(x=>x.id===id);return l?[l.cabinet,l.box,l.shelf].filter(Boolean).join(" → "):"—"}
+function renderParts(){let q=($("partSearch")?.value||"").toLowerCase(),list=db.parts.filter(p=>(p.number+" "+p.name+" "+p.color+" "+locName(p.loc)).toLowerCase().includes(q));$("partsTable").innerHTML=list.length?`<div style="overflow:auto"><table><tr><th>Bild</th><th>Teil</th><th>Farbe</th><th>Menge</th><th>Lagerplatz</th><th>Für Sets</th><th></th></tr>${list.map(p=>`<tr><td>${p.image?`<img class="thumb" src="${esc(p.image)}" alt="">`:`<div class="thumb" style="display:grid;place-items:center">🧩</div>`}</td><td><b>${esc(p.name)}</b><br><span class="small">#${esc(p.number)}</span></td><td>${esc(p.color||"—")}</td><td><b>${p.qty||0}</b></td><td>${esc(locName(p.loc))}</td><td class="small">${esc((p.sets||[]).join(", ")||"—")}</td><td><button class="btn" onclick="openPartModal('${p.id}')">Bearbeiten</button></td></tr>`).join("")}</table></div>`:`<div class="empty">Noch keine losen Teile im Lager.</div>`;renderCatalog()}
+
+
+let currentSetKey="";
+function currentSet(){return db.sets.find(s=>s.key===currentSetKey)}
+function openSetDetail(key){
+  currentSetKey=key;
+  db.recentSets=[key,...(db.recentSets||[]).filter(x=>x!==key)].slice(0,8);
+  localSaveOnly();
+  scheduleCloudPush();
+  go("setdetail");
+  renderSetDetail();
+}
+function detailCheckKey(setKey,x){return `${setKey}::${x.part_num}::${x.color_id}`}
+function isPartChecked(setKey,x){
+  // A finished set is automatically 100% checked. No second "Alle abhaken" tap needed.
+  if(statusOf(setKey)==="built") return true;
+  return !!db.partChecks[detailCheckKey(setKey,x)];
+}
+function materializeBuiltChecks(setKey){
+  const s=db.sets.find(x=>x.key===setKey),inv=db.inventories[s?.number]||[];
+  inv.filter(x=>!x.is_spare).forEach(x=>db.partChecks[detailCheckKey(setKey,x)]=true);
+}
+function updateStatusFromPartChecks(setKey){
+  const s=db.sets.find(x=>x.key===setKey),inv=db.inventories[s?.number]||[];
+  const all=inv.filter(x=>!x.is_spare);
+  if(!all.length)return;
+  const done=all.filter(x=>!!db.partChecks[detailCheckKey(setKey,x)]).length;
+  db.status[setKey]=done===all.length?"built":done>0?"partial":"notbuilt";
+}
+function togglePartCheck(setKey,x){
+  // If the set was globally finished, turn that implicit "all checked" state
+  // into real checks before unchecking one part.
+  if(statusOf(setKey)==="built"){
+    materializeBuiltChecks(setKey);
+    db.status[setKey]="partial";
+  }
+  const k=detailCheckKey(setKey,x);
+  db.partChecks[k]=!db.partChecks[k];
+  updateStatusFromPartChecks(setKey);
+  save();
+  renderSetDetail();
+}
+function checkAllSetParts(setKey,done=true){
+  const s=db.sets.find(x=>x.key===setKey),inv=db.inventories[s?.number];
+  if(!inv)return;
+  inv.filter(x=>!x.is_spare).forEach(x=>db.partChecks[detailCheckKey(setKey,x)]=done);
+  db.status[setKey]=done?"built":"notbuilt";
+  save();
+  renderSetDetail();
+}
+function markWholeSetBuilt(setKey){
+  // One tap is enough. We do not need thousands of separate part-check entries.
+  db.status[setKey]="built";
+  save();
+  if(currentSetKey===setKey) renderSetDetail();
+}
+function renderSetDetail(){
+ const s=currentSet(); if(!s)return;
+ const inv=db.inventories[s.number],st=statusOf(s.key),d=db.setDetails[s.number]||{};
+ $("setDetailHero").innerHTML=`<div class="hero"><div style="display:grid;grid-template-columns:190px 1fr;gap:20px;align-items:center"><div class="set-cover" style="height:190px;margin:0"><img src="${esc(d.set_img_url||setImageUrl(s.number))}" alt="" onerror="this.style.display='none';this.parentNode.textContent='🧱'"></div><div><span class="badge ${st}">${statusLabel(st)}</span><h2 style="margin:9px 0 5px">${esc(s.name)}</h2><div class="small" style="color:#7B7470">#${esc(s.number)}${s.copy>1?` · Exemplar ${s.copy}`:""} · ${Number(s.pieces).toLocaleString("de-DE")} Teile</div><div class="actions"><button class="btn good" onclick="markWholeSetBuilt('${s.key}')">Fertig gebaut</button><button class="btn warn" onclick="setStatus('${s.key}','partial')">◐ Teilweise gebaut</button><button class="btn" onclick="checkAllSetParts('${s.key}',false)">Fortschritt zurücksetzen</button></div></div></div></div>`;
+ if(!inv){
+   $("setDetailParts").innerHTML=`<div class="empty"><h3>Teileliste noch nicht geladen</h3><p>Unter <b>Mehr → Rebrickable API</b> zuerst die API testen und dann die Set-Inventare laden.</p><button class="btn primary" onclick="loadInventoryForSet('${s.number}').then(()=>{save();renderSetDetail()}).catch(e=>alert(e.message))">Inventar für dieses Set laden</button></div>`;
+   return;
+ }
+ renderSetDetailParts();
+}
+function renderSetDetailParts(){
+ const s=currentSet(); if(!s)return;
+ const inv=db.inventories[s.number]||[];
+ const q=($("detailPartSearch")?.value||"").toLowerCase(),f=$("detailPartFilter")?.value||"all";
+ const all=inv.filter(x=>!x.is_spare);
+ const rows=all.filter(x=>(x.part_num+" "+x.part_name+" "+x.color_name).toLowerCase().includes(q)).filter(x=>f==="all"||(f==="done"?isPartChecked(s.key,x):!isPartChecked(s.key,x)));
+ const done=all.filter(x=>isPartChecked(s.key,x)).length,total=all.length,pct=total?Math.round(done/total*100):0;
+ const head=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px"><div><b>${done} / ${total} Teil-Positionen abgehakt</b><div class="small">Die Haken gelten nur für dieses Set-Exemplar.</div></div><button class="btn good" onclick="checkAllSetParts('${s.key}',true)">Alle abhaken</button></div><div class="progress" style="margin-bottom:14px"><div style="width:${pct}%"></div></div>`;
+ $("setDetailParts").innerHTML=head+(rows.length?`<div style="overflow:auto"><table><tr><th>✓</th><th>Bild</th><th>Teil</th><th>Farbe</th><th>Anzahl</th><th>Auch in deinen Sets</th></tr>${rows.map(x=>{const checked=isPartChecked(s.key,x);const matches=db.sets.filter(other=>db.inventories[other.number]?.some(y=>!y.is_spare&&y.part_num===x.part_num&&String(y.color_id)===String(x.color_id))).map(other=>other.number).filter((v,i,a)=>a.indexOf(v)===i);return `<tr style="${checked?"opacity:.52":""}"><td><button class="btn ${checked?"good":""}" onclick='togglePartCheck(${JSON.stringify(s.key)},${JSON.stringify(x)})'>${checked?"✓":"○"}</button></td><td>${x.image?`<img class="thumb" src="${esc(x.image)}" alt="">`:`<div class="thumb" style="display:grid;place-items:center">🧩</div>`}</td><td><b>${esc(x.part_name||x.part_num)}</b><br><span class="small">#${esc(x.part_num)}</span></td><td>${esc(x.color_name||"—")}</td><td><b>${x.quantity}</b></td><td class="small">${esc(matches.slice(0,8).join(", "))}${matches.length>8?` … +${matches.length-8}`:""}</td></tr>`}).join("")}</table></div>`:`<div class="empty">Keine passenden Teile gefunden.</div>`);
+}
+
+let pendingPhoto="";
+function openPhotoTool(){
+ $("cameraInput").value="";
+ $("cameraInput").click();
+}
+function handlePhoto(e){
+ const file=e.target.files?.[0];
+ if(!file)return;
+ const reader=new FileReader();
+ reader.onload=ev=>{
+   const img=new Image();
+   img.onload=()=>{
+     const max=700,scale=Math.min(1,max/Math.max(img.width,img.height));
+     const c=document.createElement("canvas");
+     c.width=Math.max(1,Math.round(img.width*scale));
+     c.height=Math.max(1,Math.round(img.height*scale));
+     c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+     pendingPhoto=c.toDataURL("image/jpeg",0.72);
+     showPhotoMatcher();
+   };
+   img.src=ev.target.result;
+ };
+ reader.readAsDataURL(file);
+}
+function photoCatalogMatches(q){
+ q=String(q||"").toLowerCase().trim();
+ const rows=aggregateCatalog();
+ if(!q)return rows.slice(0,30);
+ return rows.filter(x=>(x.part_num+" "+x.part_name+" "+x.color_name+" "+x.sets.join(" ")).toLowerCase().includes(q)).slice(0,40);
+}
+function showPhotoMatcher(){
+ modal(`<h2>Match photo to part</h2>
+ <div style="display:grid;grid-template-columns:minmax(190px,280px) 1fr;gap:18px;align-items:start">
+   <div><img src="${pendingPhoto}" style="width:100%;max-height:300px;object-fit:contain;border-radius:16px;border:1px solid var(--line);background:#f8fafc"><p class="small">Tipp: Fotografiere möglichst nur ein Teil vor ruhigem Hintergrund.</p></div>
+   <div>
+     <label class="small"><b>Passendes Teil suchen</b></label>
+     <input id="photoMatchSearch" class="input" style="width:100%;margin:6px 0 10px" placeholder="z. B. 3001, Brick 2x4, rot…" oninput="renderPhotoMatches()">
+     <div id="photoMatches"></div>
+   </div>
+ </div>`);
+ renderPhotoMatches();
+}
+function renderPhotoMatches(){
+ const el=$("photoMatches"); if(!el)return;
+ const q=$("photoMatchSearch")?.value||"";
+ const rows=photoCatalogMatches(q);
+ if(!Object.keys(db.inventories||{}).length){
+   el.innerHTML=`<div class="empty">Noch keine Set-Inventare geladen. Du kannst das Foto trotzdem als loses Teil speichern.</div><button class="btn primary" onclick="savePhotoAsLoosePart()">Als loses Teil speichern</button>`;
+   return;
+ }
+ el.innerHTML=rows.length?`<div style="max-height:380px;overflow:auto">${rows.map(x=>`<button class="btn" style="width:100%;display:grid;grid-template-columns:62px 1fr;gap:10px;text-align:left;margin-bottom:8px;align-items:center" onclick='usePhotoForCatalogPart(${JSON.stringify(x)})'>${x.image?`<img src="${esc(x.image)}" class="thumb">`:`<div class="thumb" style="display:grid;place-items:center">🧩</div>`}<span><b>${esc(x.part_name||x.part_num)}</b><br><span class="small">#${esc(x.part_num)} · ${esc(x.color_name||"—")} · in ${x.sets.length} deiner Sets</span></span></button>`).join("")}</div><div style="margin-top:8px"><button class="btn" onclick="savePhotoAsLoosePart()">Keins davon – als loses Teil speichern</button></div>`:`<div class="empty">Kein passendes Teil gefunden.</div><button class="btn" onclick="savePhotoAsLoosePart()">Als loses Teil speichern</button>`;
+}
+function usePhotoForCatalogPart(x){
+ const known=db.parts.find(p=>String(p.number)===String(x.part_num)&&String(p.color||"").toLowerCase()===String(x.color_name||"").toLowerCase());
+ if(known){
+   known.image=pendingPhoto;
+   known.sets=[...new Set([...(known.sets||[]),...x.sets.map(s=>String(s).split(" ")[0])])];
+   closeModal();save();go("parts");
+   return;
+ }
+ db.parts.push({id:uid(),name:x.part_name||x.part_num,number:x.part_num,color:x.color_name||"",qty:1,loc:"",image:pendingPhoto,sets:x.sets.map(s=>String(s).split(" ")[0])});
+ closeModal();save();go("parts");
+}
+function savePhotoAsLoosePart(){
+ modal(`<h2>Save photo as loose part</h2><div class="formgrid">
+ <div class="field" style="grid-column:1/-1"><img src="${pendingPhoto}" style="width:100%;max-height:260px;object-fit:contain;border-radius:14px;border:1px solid var(--line)"></div>
+ <div class="field"><label>Name</label><input id="photoLooseName" class="input" placeholder="z. B. Brick 2×4"></div>
+ <div class="field"><label>Teilnummer</label><input id="photoLooseNumber" class="input" placeholder="optional"></div>
+ <div class="field"><label>Farbe</label><input id="photoLooseColor" class="input" placeholder="optional"></div>
+ <div class="field"><label>Menge</label><input id="photoLooseQty" class="input" type="number" min="1" value="1"></div>
+ </div><button class="btn primary" style="margin-top:12px" onclick="commitLoosePhotoPart()">Speichern</button>`);
+}
+function commitLoosePhotoPart(){
+ db.parts.push({id:uid(),name:$("photoLooseName").value||"Fotografiertes LEGO-Teil",number:$("photoLooseNumber").value||"",color:$("photoLooseColor").value||"",qty:+$("photoLooseQty").value||1,loc:"",image:pendingPhoto,sets:[]});
+ closeModal();save();go("parts");
+}
+function aggregateCatalog(){
+ const map=new Map();
+ for(const s of db.sets){
+   const inv=db.inventories[s.number];
+   if(!inv) continue;
+   for(const x of inv){
+     if(x.is_spare) continue;
+     const key=`${x.part_num}||${x.color_id}`;
+     if(!map.has(key)) map.set(key,{part_num:x.part_num,part_name:x.part_name,color_name:x.color_name,color_id:x.color_id,image:x.image,total:0,sets:new Set()});
+     const row=map.get(key);
+     row.total+=(+x.quantity||0);
+     row.sets.add(`${s.number} ${s.name}`);
+     if(!row.image && x.image) row.image=x.image;
+   }
+ }
+ return [...map.values()].map(x=>({...x,sets:[...x.sets]}));
+}
+function renderCatalog(){
+ const el=$("catalogTable"); if(!el) return;
+ const q=($("partSearch")?.value||"").toLowerCase();
+ let rows=aggregateCatalog().filter(x=>(x.part_num+" "+x.part_name+" "+x.color_name+" "+x.sets.join(" ")).toLowerCase().includes(q));
+ if(!Object.keys(db.inventories).length){el.innerHTML=`<div class="empty">Noch keine Set-Inventare geladen. Unter <b>Mehr → Rebrickable API</b> kannst du „Alle Set-Inventare laden“ starten.</div>`;return}
+ el.innerHTML=rows.length?`<div style="overflow:auto"><table><tr><th>Bild</th><th>Teil</th><th>Farbe</th><th>In deinen Sets benötigt</th><th>Kommt vor in</th></tr>${rows.map(x=>`<tr><td>${x.image?`<img class="thumb" src="${esc(x.image)}" alt="">`:`<div class="thumb" style="display:grid;place-items:center">🧩</div>`}</td><td><b>${esc(x.part_name||x.part_num)}</b><br><span class="small">#${esc(x.part_num)}</span></td><td>${esc(x.color_name||"—")}</td><td><b>${x.total}</b></td><td class="small">${esc(x.sets.slice(0,6).join(", "))}${x.sets.length>6?` … +${x.sets.length-6}`:""}</td></tr>`).join("")}</table></div>`:`<div class="empty">Keine passenden Teile gefunden.</div>`;
+}
+function renderInventoryState(){
+ const el=$("inventoryState"); if(!el) return;
+ const unique=[...new Set(db.sets.map(s=>s.number))];
+ const loaded=unique.filter(n=>db.inventories[n]).length;
+ const parts=Object.values(db.inventories).reduce((a,inv)=>a+(inv?.length||0),0);
+ el.innerHTML=`<b>${loaded} von ${unique.length}</b> verschiedenen Sets geladen · ${parts.toLocaleString("de-DE")} Inventar-Positionen gespeichert.`;
+}
+
+function renderStatistics(){
+  const total=db.sets.length;
+  const counts={
+    built:db.sets.filter(s=>statusOf(s.key)==="built").length,
+    partial:db.sets.filter(s=>statusOf(s.key)==="partial").length,
+    notbuilt:db.sets.filter(s=>statusOf(s.key)==="notbuilt").length,
+    disassembled:db.sets.filter(s=>statusOf(s.key)==="disassembled").length
+  };
+  const el=$("statisticsBody"); if(!el)return;
+  const pieceCount=db.sets.reduce((a,s)=>a+(+s.pieces||0),0);
+  el.innerHTML=`<div class="stats-grid">
+    <div class="stat-card"><span class="stat-icon pink">${icon("archive",22)}</span><div class="stat-number">${total}</div><b>Sets</b><small>in deiner Sammlung</small></div>
+    <div class="stat-card"><span class="stat-icon olive">${icon("puzzle",22)}</span><div class="stat-number">${pieceCount.toLocaleString("de-DE")}</div><b>Teile</b><small>in allen Sets</small></div>
+    <div class="stat-card"><span class="stat-icon orange">${icon("check-check",22)}</span><div class="stat-number">${counts.built}</div><b>Fertig</b><small>${total?Math.round(counts.built/total*100):0}% deiner Sets</small></div>
+    <div class="stat-card"><span class="stat-icon cream">${icon("clock-3",22)}</span><div class="stat-number">${counts.partial}</div><b>Teilweise</b><small>in Arbeit</small></div>
+  </div>
+  <div class="panel clean-panel"><h2>Statusverteilung</h2>
+    ${["built","partial","notbuilt","disassembled"].map(k=>{
+      const lab={built:"Fertig",partial:"Teilweise",notbuilt:"Nicht gebaut",disassembled:"Im Lager"}[k];
+      const v=counts[k],p=total?Math.round(v/total*100):0;
+      return `<div class="dist-row"><span>${lab}</span><div class="dist-track"><div class="dist-fill ${k}" style="width:${p}%"></div></div><b>${v}</b></div>`;
+    }).join("")}
+  </div>`;
+}
+function renderLocations(){$("locationsTable").innerHTML=db.locations.length?`<table><tr><th>Schrank</th><th>Box</th><th>Fach</th><th>Teile</th><th></th></tr>${db.locations.map(l=>`<tr><td>${esc(l.cabinet)}</td><td>${esc(l.box)}</td><td>${esc(l.shelf)}</td><td>${db.parts.filter(p=>p.loc===l.id).reduce((a,p)=>a+(+p.qty||0),0)}</td><td><button class="btn danger" onclick="deleteLocation('${l.id}')">Löschen</button></td></tr>`).join("")}</table>`:`<div class="empty">Noch keine Lagerplätze.</div>`}
+function modal(content){$("modalbox").innerHTML=content+`<div style="text-align:right;margin-top:14px"><button class="btn" onclick="closeModal()">Schließen</button></div>`;$("modal").style.display="block"}
+function closeModal(){$("modal").style.display="none"}
+
+function openAddSetModal(){
+ modal(`<div class="eyebrow">NEUES SET</div><h2>＋ Set hinzufügen</h2>
+ <p class="small">Enter the set number. With a working Rebrickable, the app loads name, image, year, part count and inventory automatically.</p>
+ <div class="formgrid">
+ <div class="field"><label>Setnummer</label><input id="newSetNumber" class="input" placeholder="75341"></div>
+ <div class="field"><label>Exemplare</label><input id="newSetExemplare" class="input" type="number" min="1" value="1"></div>
+ <div class="field"><label>Status</label><select id="newSetStatus" class="select"><option value="notbuilt">○ Noch nicht</option><option value="partial">◐ Teilweise</option><option value="built">Fertig gebaut</option><option value="disassembled">Zerlegt</option></select></div>
+ </div>
+ <div class="actions"><button class="btn primary" onclick="addSetFromApi()">＋ Set hinzufügen</button><button class="btn" onclick="openManualNewSet()">Manuell hinzufügen</button></div>
+ <p id="newSetState" class="small"></p>`);
+}
+async function addSetFromApi(){
+ const n=String($("newSetNumber")?.value||"").trim(),copies=Math.max(1,+$("newSetExemplare")?.value||1),st=$("newSetStatus")?.value||"notbuilt";
+ if(!n){$("newSetState").textContent="Enter a set number.";return}
+ if(!db.apiKey){$("newSetState").textContent="No API key saved. Use Manuell hinzufügen or connect Rebrickable in Settings.";return}
+ $("newSetState").textContent="Loading set…";
+ try{
+   const d=await rbFetch("/lego/sets/"+encodeURIComponent(rbSetNum(n))+"/");
+   const base=db.sets.filter(s=>s.number===n).length;
+   for(let i=1;i<=copies;i++){const copy=base+i,key=`${n}-${copy}`;db.sets.push({key,number:n,copy,name:d.name||n,pieces:+d.num_parts||0});db.status[key]=st}
+   db.setDetails[n]={name:d.name,year:d.year,num_parts:d.num_parts,set_img_url:d.set_img_url||""};
+   try{await loadInventoryForSet(n)}catch(e){}
+   closeModal();save();go("sets");
+ }catch(e){$("newSetState").textContent="Could not load set: "+e.message}
+}
+function openManualNewSet(){
+ const n=String($("newSetNumber")?.value||"").trim(),copies=Math.max(1,+$("newSetExemplare")?.value||1),st=$("newSetStatus")?.value||"notbuilt";
+ modal(`<div class="eyebrow">MANUAL ENTRY</div><h2>Add set manually</h2><div class="formgrid">
+ <div class="field"><label>Setnummer</label><input id="manualSetNumber" class="input" value="${esc(n)}"></div>
+ <div class="field"><label>Name</label><input id="manualSetName" class="input"></div>
+ <div class="field"><label>Part count</label><input id="manualSetPieces" class="input" type="number" min="0"></div>
+ <div class="field"><label>Exemplare</label><input id="manualSetExemplare" class="input" type="number" min="1" value="${copies}"></div>
+ </div><button class="btn primary" onclick="commitManualSet('${st}')">Set speichern</button>`);
+}
+function commitManualSet(st){
+ const n=String($("manualSetNumber").value||"").trim(),name=String($("manualSetName").value||"").trim()||n,pieces=+$("manualSetPieces").value||0,copies=Math.max(1,+$("manualSetExemplare").value||1);
+ if(!n)return; const base=db.sets.filter(s=>s.number===n).length;
+ for(let i=1;i<=copies;i++){const copy=base+i,key=`${n}-${copy}`;db.sets.push({key,number:n,copy,name,pieces});db.status[key]=st||"notbuilt"}
+ closeModal();save();go("sets");
+}
+function openPartModal(id){let p=db.parts.find(x=>x.id===id)||{name:"",number:"",color:"",qty:0,loc:"",image:"",sets:[]};modal(`<h2>${id?"Teil bearbeiten":"Teil hinzufügen"}</h2><form onsubmit="savePart(event,'${id||""}')"><div class="formgrid"><div class="field"><label>Name</label><input class="input" name="name" required value="${esc(p.name)}"></div><div class="field"><label>Teilnummer</label><input class="input" name="number" required value="${esc(p.number)}"></div><div class="field"><label>Farbe</label><input class="input" name="color" value="${esc(p.color)}"></div><div class="field"><label>Menge</label><input class="input" name="qty" type="number" min="0" value="${p.qty||0}"></div><div class="field"><label>Lagerplatz</label><select class="select" name="loc"><option value="">—</option>${db.locations.map(l=>`<option value="${l.id}" ${p.loc===l.id?"selected":""}>${esc(locName(l.id))}</option>`).join("")}</select></div><div class="field"><label>Bild-URL</label><input class="input" name="image" value="${esc(p.image||"")}"></div><div class="field" style="grid-column:1/-1"><label>Setnummern, in denen du es brauchst (Komma getrennt)</label><input class="input" name="sets" value="${esc((p.sets||[]).join(", "))}"></div></div><button class="btn primary" style="margin-top:12px">Speichern</button></form>`)}
+function savePart(e,id){e.preventDefault();let f=new FormData(e.target),obj={id:id||uid(),name:f.get("name"),number:f.get("number"),color:f.get("color"),qty:+f.get("qty"),loc:f.get("loc"),image:f.get("image"),sets:String(f.get("sets")||"").split(",").map(x=>x.trim()).filter(Boolean)};let i=db.parts.findIndex(x=>x.id===obj.id);if(i>=0)db.parts[i]=obj;else db.parts.push(obj);closeModal();save()}
+function openLocationModal(){modal(`<h2>Lagerplatz hinzufügen</h2><form onsubmit="saveLocation(event)"><div class="formgrid"><div class="field"><label>Schrank</label><input class="input" name="cabinet" placeholder="A"></div><div class="field"><label>Box</label><input class="input" name="box" placeholder="03"></div><div class="field"><label>Fach</label><input class="input" name="shelf" placeholder="07"></div></div><button class="btn primary" style="margin-top:12px">Speichern</button></form>`)}
+function saveLocation(e){e.preventDefault();let f=new FormData(e.target);db.locations.push({id:uid(),cabinet:f.get("cabinet"),box:f.get("box"),shelf:f.get("shelf")});closeModal();save()}
+function deleteLocation(id){if(confirm("Lagerplatz wirklich löschen?")){db.locations=db.locations.filter(x=>x.id!==id);save()}}
+function saveApi(){db.apiKey=$("apiKey").value.trim();localSaveOnly();$("apiState").textContent=db.apiKey?"✓ API-Key lokal gespeichert.":"Bitte einen API-Key eingeben."}
+function rbSetNum(n){return String(n).includes("-")?String(n):String(n)+"-1"}
+async function rbFetch(path){
+ if(!db.apiKey) throw new Error("Bitte zuerst deinen API-Key speichern.");
+ const r=await fetch("https://rebrickable.com/api/v3"+path,{headers:{"Authorization":"key "+db.apiKey,"Accept":"application/json"}});
+ let detail="";
+ if(!r.ok){try{detail=(await r.json())?.detail||""}catch(e){} throw new Error(`HTTP ${r.status}${detail?": "+detail:""}`)}
+ return await r.json();
+}
+async function testApi(){
+ saveApi();
+ if(!db.apiKey)return;
+ $("apiState").textContent="⏳ Verbindung wird getestet …";
+ try{
+   const d=await rbFetch("/lego/sets/10281-1/");
+   $("apiState").textContent=`✅ Verbindung funktioniert. Test-Set gefunden: ${d.name}`;
+ }catch(e){
+   $("apiState").textContent="❌ API-Verbindung fehlgeschlagen: "+e.message;
+ }
+}
+async function loadInventoryForSet(number){
+ const setnum=rbSetNum(number);
+ const detail=await rbFetch("/lego/sets/"+encodeURIComponent(setnum)+"/");
+ db.setDetails[number]={name:detail.name,year:detail.year,num_parts:detail.num_parts,set_img_url:detail.set_img_url||""};
+ let url="/lego/sets/"+encodeURIComponent(setnum)+"/parts/?page_size=1000&inc_color_details=1";
+ let all=[];
+ while(url){
+   const d=await rbFetch(url.startsWith("/api/v3")?url.slice(7):url.replace("https://rebrickable.com/api/v3",""));
+   all.push(...(d.results||[]));
+   if(d.next){
+     const u=new URL(d.next);
+     url=u.pathname.replace("/api/v3","")+u.search;
+   } else url=null;
+ }
+ db.inventories[number]=all.map(x=>({
+   part_num:x.part?.part_num||"",
+   part_name:x.part?.name||"",
+   color_id:x.color?.id??"",
+   color_name:x.color?.name||"",
+   quantity:+x.quantity||0,
+   is_spare:!!x.is_spare,
+   image:x.part?.part_img_url||x.part?.part_url||""
+ }));
+}
+let apiLoading=false;
+async function loadWholeCollection(){
+ saveApi();
+ if(!db.apiKey)return;
+ if(apiLoading)return;
+ apiLoading=true;
+ const unique=[...new Set(db.sets.map(s=>s.number))];
+ const wrap=$("apiProgressWrap"),bar=$("apiProgress"),txt=$("apiProgressText");
+ wrap.style.display="block";
+ let done=0, failed=[];
+ for(const n of unique){
+   txt.textContent=`${done} / ${unique.length} · Lade Set ${n} …`;
+   bar.style.width=Math.round(done/unique.length*100)+"%";
+   try{
+     await loadInventoryForSet(n);
+   }catch(e){
+     failed.push(`${n}: ${e.message}`);
+   }
+   done++;
+   bar.style.width=Math.round(done/unique.length*100)+"%";
+   txt.textContent=`${done} / ${unique.length} Sets verarbeitet`;
+   localStorage.setItem(KEY,JSON.stringify(db));
+   renderInventoryState();
+   renderCatalog();
+   // Small pause keeps the browser responsive during the collection import.
+   await new Promise(r=>setTimeout(r,80));
+ }
+ apiLoading=false;
+ renderActivePage();
+ if(failed.length){
+   $("apiState").textContent=`⚠️ Fertig, aber ${failed.length} Set(s) konnten nicht geladen werden. Beispiel: ${failed[0]}`;
+ }else{
+   $("apiState").textContent=`✅ Fertig! Alle ${unique.length} verschiedenen Set-Inventare wurden geladen und lokal gespeichert.`;
+ }
+}
+function exportBackup(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}));a.download="lego-vault-backup.json";a.click()}
+function importBackup(e){let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save();alert("Backup importiert.")}catch{alert("Ungültige Backup-Datei.")}};r.readAsText(e.target.files[0])}
+function resetApp(){if(confirm("Wirklich alle gespeicherten App-Daten zurücksetzen?")){localStorage.removeItem(KEY);location.reload()}}
+function renderAll(){
+  renderStats();renderSets();renderTodo();renderParts();renderCatalog();renderLocations();renderInventoryState();renderStatistics();
+  if(currentSetKey)renderSetDetail();
+  if($("apiKey")) $("apiKey").value=db.apiKey||"";
+  if($("supabaseKey")) $("supabaseKey").value=localStorage.getItem(SUPABASE_KEY_STORAGE)||"";
+  refreshCloudUI();
+}
+buildNav();renderAll();
+restoreCloudEmail();
+refreshCloudUI();
+startCloudAutoRefresh();
+setTimeout(()=>refreshCloudSession(),50);
+
+</script>
+</body>
+</html>
