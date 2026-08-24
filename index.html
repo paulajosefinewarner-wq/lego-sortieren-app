@@ -181,7 +181,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;bor
 
       <div class="panel">
         <div class="section-head"><h2>Cloud-Synchronisierung</h2><span id="cloudBadge" class="status-pill notbuilt">Nicht verbunden</span></div>
-        <p class="small">Bau-Status, Häkchen, Sets, To-dos und Lager werden zwischen iPhone, iPad und Laptop synchronisiert. Nach der ersten Anmeldung bleibt die Sitzung gespeichert und wird beim nächsten Öffnen automatisch wiederhergestellt.</p>
+        <p class="small">Bau-Status, Häkchen, Sets, To-dos und Lager werden zwischen iPhone, iPad und Laptop synchronisiert. Nach der ersten Anmeldung bleibt die Sitzung gespeichert und wird beim nächsten Öffnen automatisch wiederhergestellt. <strong>„Cloud-Einstellungen anzeigen“ brauchst du normalerweise nicht.</strong> Dort kannst du nur später Konto, Key oder Abmeldung ändern.</p>
         <div id="cloudSetup">
         <div class="formgrid">
           <div class="field" style="grid-column:1/-1"><label>Supabase Publishable Key</label><input id="supabaseKey" class="input" type="password" placeholder="sb_publishable_…"></div>
@@ -191,7 +191,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;bor
         <div class="toolbar" style="margin-top:14px"><button class="btn primary" onclick="saveCloudConfig()">Cloud verbinden</button><button class="btn" onclick="cloudSignUp()">Konto erstellen</button><button class="btn" onclick="cloudSignIn()">Anmelden</button><button class="btn" onclick="cloudPull()">Cloud laden</button><button class="btn" onclick="cloudPush()">Jetzt synchronisieren</button><button class="btn danger" onclick="cloudSignOut()">Abmelden</button></div>
         <p id="cloudState" class="small">Noch nicht verbunden.</p>
         </div>
-        <div class="toolbar" style="margin-top:12px"><button class="btn" onclick="toggleCloudSetup()">Verbindung verwalten</button></div>
+        <div class="toolbar" style="margin-top:12px"><button class="btn" onclick="toggleCloudSetup()">Cloud-Einstellungen anzeigen</button></div>
       </div>
 
       <div class="panel"><h2>Rebrickable</h2><p class="small">Der API-Key wird auf diesem Gerät gespeichert und nach dem Schließen automatisch wieder eingesetzt.</p><input id="apiKey" class="input" type="password" style="width:100%" placeholder="Rebrickable API-Key"><div class="toolbar" style="margin-top:14px"><button class="btn primary" onclick="saveApi()">Key speichern</button><button class="btn" onclick="testApi()">API testen</button><button class="btn yellow" onclick="loadWholeCollection()">Alle Set-Inventare laden</button></div><p id="apiState" class="small"></p><div id="apiProgressWrap" style="display:none;margin-top:12px"><div class="progress-track"><div id="apiProgress"></div></div><p id="apiProgressText" class="small"></p></div></div>
@@ -878,38 +878,70 @@ async function loadInventoryForSet(number){
  }));
 }
 let apiLoading=false;
+function rbWait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function rbRetrySeconds(message){
+ const m=String(message||"").match(/available in\s+(\d+)\s+seconds?/i);
+ return m?Math.max(2,Number(m[1])+2):40;
+}
 async function loadWholeCollection(){
  saveApi();
- if(!db.apiKey)return;
- if(apiLoading)return;
+ if(!db.apiKey||apiLoading)return;
  apiLoading=true;
+
  const unique=[...new Set(db.sets.map(s=>s.number))];
+ // Already loaded inventories are skipped, so pressing the button again never starts from zero.
+ const queue=unique.filter(n=>!(Array.isArray(db.inventories[n])&&db.inventories[n].length));
  const wrap=$("apiProgressWrap"),bar=$("apiProgress"),txt=$("apiProgressText");
  wrap.style.display="block";
- let done=0, failed=[];
- for(const n of unique){
-   txt.textContent=`${done} / ${unique.length} · Lade Set ${n} …`;
-   bar.style.width=Math.round(done/unique.length*100)+"%";
-   try{
-     await loadInventoryForSet(n);
-   }catch(e){
-     failed.push(`${n}: ${e.message}`);
+
+ if(!queue.length){
+   bar.style.width="100%";
+   txt.textContent=`${unique.length} / ${unique.length} Sets geladen`;
+   $("apiState").textContent="✅ Alle Set-Inventare sind bereits auf diesem Gerät gespeichert.";
+   apiLoading=false;
+   return;
+ }
+
+ let done=unique.length-queue.length, failed=[];
+ for(const n of queue){
+   let loaded=false, attempts=0;
+   while(!loaded && attempts<5){
+     attempts++;
+     txt.textContent=`${done} / ${unique.length} · Lade Set ${n} …`;
+     bar.style.width=Math.round(done/unique.length*100)+"%";
+     try{
+       await loadInventoryForSet(n);
+       loaded=true;
+     }catch(e){
+       const msg=String(e?.message||e||"");
+       if(/\b429\b|throttl/i.test(msg)){
+         let wait=rbRetrySeconds(msg);
+         while(wait>0){
+           txt.textContent=`Rebrickable-Limit erreicht · automatisch weiter in ${wait} s …`;
+           $("apiState").textContent="⏳ Alles okay – Rebrickable verlangt gerade eine kurze Pause. LEGO Vault wartet automatisch.";
+           await rbWait(1000);
+           wait--;
+         }
+         continue; // retry the same set
+       }
+       if(attempts>=3){failed.push(`${n}: ${msg}`);break}
+       await rbWait(1500);
+     }
    }
-   done++;
-   bar.style.width=Math.round(done/unique.length*100)+"%";
-   txt.textContent=`${done} / ${unique.length} Sets verarbeitet`;
+   if(loaded)done++;
    localStorage.setItem(KEY,JSON.stringify(db));
+   bar.style.width=Math.round(done/unique.length*100)+"%";
+   txt.textContent=`${done} / ${unique.length} Sets geladen`;
    renderInventoryState();
-   renderCatalog();
-   // Small pause keeps the browser responsive during the collection import.
-   await new Promise(r=>setTimeout(r,80));
+   // Deliberately slower than V13 to avoid Rebrickable HTTP 429.
+   await rbWait(1250);
  }
  apiLoading=false;
  renderActivePage();
  if(failed.length){
-   $("apiState").textContent=`⚠️ Fertig, aber ${failed.length} Set(s) konnten nicht geladen werden. Beispiel: ${failed[0]}`;
+   $("apiState").textContent=`⚠️ ${done} von ${unique.length} geladen. ${failed.length} Set(s) hatten einen anderen Fehler. Erneut drücken lädt nur die fehlenden.`;
  }else{
-   $("apiState").textContent=`✅ Fertig! Alle ${unique.length} verschiedenen Set-Inventare wurden geladen und lokal gespeichert.`;
+   $("apiState").textContent=`✅ Fertig! ${done} von ${unique.length} Set-Inventaren sind gespeichert.`;
  }
 }
 function exportBackup(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}));a.download="lego-vault-backup.json";a.click()}
