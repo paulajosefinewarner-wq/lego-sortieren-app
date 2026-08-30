@@ -713,7 +713,7 @@ html,body,button,input,select,textarea{
 .settings-backup-note.show{display:block}
 
 
-/* ===== Piecebook V37 – Klick-Fix für lose Teile ===== */
+/* ===== Piecebook V40 – Direktbestand aus Set + lose Teile ===== */
 /* Lager + Mengen aus V36 unverändert */
 .qty-ok{font-size:12px;color:#3d6b46}
 .storage-count{font-variant-numeric:tabular-nums}
@@ -961,7 +961,8 @@ function cloudPayload(){
     status:{...(db.status||{})},
     parts:(db.parts||[]).map(p=>({
       id:p.id,name:p.name,number:p.number,color:p.color,qty:p.qty,loc:p.loc,
-      sets:Array.isArray(p.sets)?p.sets:[]
+      sets:Array.isArray(p.sets)?p.sets:[],
+      allocations:p.allocations&&typeof p.allocations==="object"?p.allocations:{}
     })),
     locations:(db.locations||[]).map(x=>({...x})),
     setLocations:{...(db.setLocations||{})},
@@ -1570,9 +1571,69 @@ function openCatalogPart(partNum,colorId){
   if(!item)return;
   openPartExplorer(item);
 }
-function openPartExplorer(item){
+
+function findLoosePartForInventoryItem(item){
+  return (db.parts||[]).find(p=>
+    String(p.number)===String(item.part_num) &&
+    (!item.color_name || normalizeColor(p.color)===normalizeColor(item.color_name))
+  )||null;
+}
+function setPartNeededInSet(setKey,item){
+  const s=(db.sets||[]).find(x=>x.key===setKey);
+  if(!s)return 0;
+  const inv=db.inventories?.[s.number]||[];
+  return inv.filter(x=>!x.is_spare&&String(x.part_num)===String(item.part_num)&&String(x.color_id)===String(item.color_id))
+    .reduce((sum,x)=>sum+(Number(x.quantity)||0),0);
+}
+function saveDirectPartStock(setKey,item){
+  const qtyEl=$("directPartQty");
+  const locEl=$("directPartLoc");
+  if(!qtyEl)return;
+
+  const forThisSet=Math.max(0,Number(qtyEl.value)||0);
+  const needed=setPartNeededInSet(setKey,item);
+  const existing=findLoosePartForInventoryItem(item);
+
+  let p=existing||{
+    id:uid(),
+    name:item.part_name||item.part_num,
+    number:item.part_num,
+    color:item.color_name||"",
+    qty:0,
+    loc:"",
+    image:item.image||"",
+    sets:[],
+    allocations:{}
+  };
+
+  p.allocations=p.allocations&&typeof p.allocations==="object"?p.allocations:{};
+  if(forThisSet>0) p.allocations[setKey]=Math.min(forThisSet,needed||forThisSet);
+  else delete p.allocations[setKey];
+
+  const allocatedTotal=Object.values(p.allocations).reduce((a,b)=>a+(Number(b)||0),0);
+  p.qty=Math.max(Number(p.qty)||0,allocatedTotal);
+  p.loc=locEl?.value||p.loc||"";
+  p.image=p.image||item.image||"";
+  p.name=p.name||item.part_name||item.part_num;
+  p.number=item.part_num;
+  p.color=item.color_name||p.color||"";
+  p.sets=[...new Set(Object.keys(p.allocations).map(k=>db.sets.find(s=>s.key===k)?.number).filter(Boolean).map(String))];
+
+  if(!existing) db.parts.push(p);
+
+  scheduleHeavyCacheSave();
+  save();
+  closeModal();
+  setTimeout(()=>openPartExplorer(item,setKey),0);
+}
+function openPartExplorer(item,setKey=""){
   const matches=setsForPart(item.part_num,item.color_id);
   const img=item.image||"";
+  const loose=findLoosePartForInventoryItem(item);
+  const contextSet=(db.sets||[]).find(s=>s.key===setKey);
+  const needed=contextSet?setPartNeededInSet(setKey,item):0;
+  const allocated=contextSet?(Number(loose?.allocations?.[setKey])||0):0;
+
   modal(`
     <div class="part-detail-layout">
       <div>
@@ -1583,7 +1644,39 @@ function openPartExplorer(item){
         <div class="eyebrow">TEIL</div>
         <h2 style="margin:4px 0 6px">${esc(item.part_name||item.part_num)}</h2>
         <div class="small">#${esc(item.part_num)} · ${esc(item.color_name||"Farbe unbekannt")}</div>
-        ${item.total!=null?`<p><b>${Number(item.total).toLocaleString("de-DE")}</b> Stück insgesamt in deiner Sammlung benötigt.</p>`:""}
+        ${item.total!=null?`<p><b>${Number(item.total).toLocaleString("de-DE")}</b> Stück insgesamt in dieser Ansicht benötigt.</p>`:""}
+
+        ${contextSet?`
+          <div class="panel" style="margin-top:16px;padding:14px">
+            <b>Für ${esc(contextSet.number)} – ${esc(contextSet.name)}</b>
+            <div class="small" style="margin:4px 0 12px">Dieses Set braucht <b>${needed}</b> davon. Trage einfach ein, wie viele du davon für dieses Set schon hast.</div>
+            <div class="formgrid">
+              <div class="field">
+                <label>Davon vorhanden</label>
+                <input id="directPartQty" class="input" type="number" min="0" max="${needed||9999}" value="${allocated}">
+              </div>
+              <div class="field">
+                <label>Lagerplatz</label>
+                <select id="directPartLoc" class="select">
+                  <option value="">— Kein Lagerplatz —</option>
+                  ${db.locations.map(l=>`<option value="${l.id}" ${(loose?.loc||"")===l.id?"selected":""}>${esc(locName(l.id))}</option>`).join("")}
+                </select>
+              </div>
+            </div>
+            <div class="actions" style="margin-top:10px">
+              <button class="btn primary" onclick='saveDirectPartStock(${JSON.stringify(setKey)},${JSON.stringify(item)})'>Speichern</button>
+              ${loose?`<button class="btn" onclick="openPartModal('${loose.id}')">Als loses Teil bearbeiten</button>`:""}
+            </div>
+            ${loose?`<div class="small" style="margin-top:8px">Im Lager insgesamt gespeichert: ${Number(loose.qty)||0} Stück.</div>`:""}
+          </div>
+        `:loose?`
+          <div class="panel" style="margin-top:16px;padding:14px">
+            <b>Schon als loses Teil gespeichert</b>
+            <div class="small" style="margin-top:4px">${Number(loose.qty)||0} Stück · Lagerplatz: ${esc(locName(loose.loc))}</div>
+            <button class="btn" style="margin-top:9px" onclick="openPartModal('${loose.id}')">Loses Teil bearbeiten</button>
+          </div>
+        `:""}
+
         <h3 style="margin:20px 0 4px">Passende Sets in deiner Sammlung</h3>
         <div class="small">Tippe auf ein Set, um es direkt zu öffnen.</div>
         <div class="matching-set-list">
@@ -1664,6 +1757,122 @@ function renderSetLinkOptions(p){
   const numbers=[...new Map((db.sets||[]).map(s=>[String(s.number),s])).values()];
   return numbers.map(s=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line)"><input type="checkbox" name="linkedSet" value="${esc(s.number)}" ${selected.has(String(s.number))?"checked":""}><span><b>${esc(s.number)}</b> – ${esc(s.name)}</span></label>`).join("");
 }
+
+function loosePartFormState(){
+  const form=document.querySelector("#modalbox form");
+  if(!form)return null;
+  const f=new FormData(form);
+  return {
+    number:String(f.get("number")||"").trim(),
+    color:String(f.get("color")||"").trim(),
+    qty:Math.max(0,Number(f.get("qty"))||0)
+  };
+}
+function uniqueInventoryVariants(partNumber){
+  const map=new Map();
+  for(const [setNumber,inv] of Object.entries(db.inventories||{})){
+    if(!Array.isArray(inv))continue;
+    for(const x of inv){
+      if(x.is_spare||String(x.part_num)!==String(partNumber))continue;
+      const key=`${x.part_num}::${x.color_id}`;
+      if(!map.has(key)){
+        map.set(key,{
+          part_num:x.part_num,
+          part_name:x.part_name||x.part_num,
+          color_name:x.color_name||"",
+          color_id:x.color_id,
+          image:x.image||"",
+          sets:new Set()
+        });
+      }
+      map.get(key).sets.add(String(setNumber));
+    }
+  }
+  return [...map.values()].map(x=>({...x,sets:[...x.sets]}));
+}
+function chooseInventoryVariant(partNum,colorName){
+  const form=document.querySelector("#modalbox form");
+  if(!form)return;
+  const variants=uniqueInventoryVariants(partNum);
+  const v=variants.find(x=>normalizeColor(x.color_name)===normalizeColor(colorName))||variants[0];
+  if(!v)return;
+  const name=form.querySelector('[name="name"]');
+  const number=form.querySelector('[name="number"]');
+  const color=form.querySelector('[name="color"]');
+  const image=form.querySelector('[name="image"]');
+  if(name && (!name.value||name.value===number?.value)) name.value=v.part_name||v.part_num;
+  if(number) number.value=v.part_num;
+  if(color) color.value=v.color_name||"";
+  if(image && !image.value) image.value=v.image||"";
+  refreshLoosePartMatchPanel();
+}
+function autoAllocationMap(matches,qty){
+  let remaining=Math.max(0,Number(qty)||0);
+  const out={};
+  for(const m of matches){
+    if(remaining<=0)break;
+    const n=Math.min(remaining,Number(m.needed)||0);
+    if(n>0)out[m.set.key]=n;
+    remaining-=n;
+  }
+  return out;
+}
+function refreshLoosePartMatchPanel(){
+  const panel=$("loosePartMatchPanel");
+  const form=document.querySelector("#modalbox form");
+  if(!panel||!form)return;
+
+  const id=form.dataset.partId||"";
+  const existing=(db.parts||[]).find(x=>x.id===id)||{};
+  const state=loosePartFormState();
+  if(!state?.number){
+    panel.innerHTML='<div class="small">Gib zuerst die Teilnummer ein. Dann sucht Piecebook automatisch nach diesem Teil in deinen geladenen Sets.</div>';
+    return;
+  }
+
+  const variants=uniqueInventoryVariants(state.number);
+  const temp={number:state.number,color:state.color,qty:state.qty,sets:[]};
+  const matches=inventoryMatchesLoosePart(temp);
+  const storedAlloc=existing.allocations&&typeof existing.allocations==="object"?existing.allocations:{};
+  const suggested=Object.keys(storedAlloc).length?storedAlloc:autoAllocationMap(matches,state.qty);
+
+  const variantHtml=variants.length?`
+    <div style="margin-bottom:12px">
+      <b>Vorhandenes Teil aus deinen Sets</b>
+      <div class="small" style="margin:3px 0 7px">Treffer werden automatisch aus den bereits geladenen Set-Inventaren erkannt.</div>
+      ${variants.map(v=>`
+        <button type="button" class="btn" style="width:100%;display:grid;grid-template-columns:52px 1fr;gap:9px;text-align:left;align-items:center;margin-bottom:6px"
+          onclick='chooseInventoryVariant(${JSON.stringify(v.part_num)},${JSON.stringify(v.color_name)})'>
+          ${v.image?`<img src="${esc(v.image)}" class="thumb" alt="">`:`<div class="thumb" style="display:grid;place-items:center">🧩</div>`}
+          <span><b>${esc(v.part_name)}</b><br><span class="small">#${esc(v.part_num)} · ${esc(v.color_name||"Farbe unbekannt")} · in ${v.sets.length} Set(s)</span></span>
+        </button>`).join("")}
+    </div>`:'<div class="small" style="margin-bottom:10px">Für diese Teilnummer ist noch kein geladenes Set-Inventar vorhanden.</div>';
+
+  const allocHtml=matches.length?`
+    <div>
+      <b>Deine vorhandenen Stücke auf Sets verteilen</b>
+      <div class="small" style="margin:3px 0 7px">Wenn ein Set z. B. 3 Stück braucht und du nur 1 hast, bleibt im Lager „1 von 3 vorhanden“ gespeichert.</div>
+      ${matches.map(m=>{
+        const val=Math.min(Number(m.needed)||0,Math.max(0,Number(suggested[m.set.key])||0));
+        return `<label style="display:grid;grid-template-columns:1fr 90px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)">
+          <span><b>${esc(m.set.number)} – ${esc(m.set.name)}</b><br><span class="small">Benötigt: ${m.needed} · Lagerplatz Set: ${esc(setLocationName(m.set.key)||"—")}</span></span>
+          <input class="input" style="width:90px" type="number" min="0" max="${m.needed}" name="alloc::${esc(m.set.key)}" value="${val}">
+        </label>`;
+      }).join("")}
+    </div>`:'<div class="small">Noch kein passendes Set gefunden. Falls das Inventar noch nicht geladen ist, lade zuerst die Teile des Sets.</div>';
+
+  panel.innerHTML=variantHtml+allocHtml;
+}
+function allocationText(p){
+  const alloc=p.allocations&&typeof p.allocations==="object"?p.allocations:{};
+  const rows=Object.entries(alloc).filter(([,q])=>Number(q)>0).map(([key,q])=>{
+    const s=(db.sets||[]).find(x=>x.key===key);
+    if(!s)return null;
+    const match=inventoryMatchesLoosePart(p).find(m=>m.set.key===key);
+    return `${s.number}: ${Number(q)}/${match?.needed||"?"}`;
+  }).filter(Boolean);
+  return rows.join(" · ");
+}
 function renderParts(){
   const q=$("partSearch")?.value||"";
   const list=db.parts.filter(p=>smartMatch(`${p.number} ${p.name} ${p.color} ${locName(p.loc)} ${(p.sets||[]).join(" ")} ${partNeedText(p)}`,q));
@@ -1678,7 +1887,7 @@ function renderParts(){
         <td><b>${Number(p.qty)||0}</b></td>
         <td><span class="${sum.missing>0?"badge partial":"small"}">${esc(partNeedText(p))}</span></td>
         <td>${esc(locName(p.loc))}</td>
-        <td class="small">${esc((p.sets||[]).join(", ")||"automatisch")}</td>
+        <td class="small">${esc(allocationText(p)||(p.sets||[]).join(", ")||"automatisch")}</td>
         <td><button class="btn" onclick="openPartModal('${p.id}')">Bearbeiten</button></td>
       </tr>`;
     }).join("")}
@@ -1911,7 +2120,7 @@ function renderSetDetailParts(){
  const rows=all.filter(x=>smartMatch(`${x.part_num} ${x.part_name} ${x.color_name}`,q)).filter(x=>f==="all"||(f==="done"?isPartChecked(s.key,x):!isPartChecked(s.key,x)));
  const done=all.filter(x=>isPartChecked(s.key,x)).length,total=all.length,pct=total?Math.round(done/total*100):0;
  const head=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px"><div><b>${done} / ${total} Teil-Positionen abgehakt</b><div class="small">Die Haken gelten nur für dieses Set-Exemplar.</div></div><button class="btn good" onclick="checkAllSetParts('${s.key}',true)">Alle abhaken</button></div><div class="progress" style="margin-bottom:14px"><div style="width:${pct}%"></div></div>`;
- $("setDetailParts").innerHTML=head+(rows.length?`<div style="overflow:auto"><table><tr><th>✓</th><th>Bild</th><th>Teil</th><th>Farbe</th><th>Anzahl</th><th>Auch in deinen Sets</th></tr>${rows.map(x=>{const checked=isPartChecked(s.key,x);const matches=db.sets.filter(other=>db.inventories[other.number]?.some(y=>!y.is_spare&&y.part_num===x.part_num&&String(y.color_id)===String(x.color_id))).map(other=>other.number).filter((v,i,a)=>a.indexOf(v)===i);return `<tr style="${checked?"opacity:.52":""}"><td><button class="btn ${checked?"good":""}" onclick='togglePartCheck(${JSON.stringify(s.key)},${JSON.stringify(x)})'>${checked?"✓":"○"}</button></td><td>${x.image?`<button class="part-image-button" onclick='showPartImage(${JSON.stringify(x.image)},${JSON.stringify(x.part_name||x.part_num)})'><img class="thumb part-thumb-large" src="${esc(x.image)}" alt=""></button>`:`<div class="thumb part-thumb-large" style="display:grid;place-items:center">🧩</div>`}</td><td><button class="part-link" onclick='openPartExplorer(${JSON.stringify({part_num:x.part_num,part_name:x.part_name,color_name:x.color_name,color_id:x.color_id,image:x.image,total:x.quantity})})'><b>${esc(x.part_name||x.part_num)}</b><br><span class="small">#${esc(x.part_num)} · passende Sets anzeigen</span></button></td><td>${esc(x.color_name||"—")}</td><td><b>${x.quantity}</b></td><td class="small">${esc(matches.slice(0,8).join(", "))}${matches.length>8?` … +${matches.length-8}`:""}</td></tr>`}).join("")}</table></div>`:`<div class="empty">Keine passenden Teile gefunden.</div>`);
+ $("setDetailParts").innerHTML=head+(rows.length?`<div style="overflow:auto"><table><tr><th>✓</th><th>Bild</th><th>Teil</th><th>Farbe</th><th>Benötigt</th><th>Vorhanden</th><th>Auch in deinen Sets</th></tr>${rows.map(x=>{const checked=isPartChecked(s.key,x);const matches=db.sets.filter(other=>db.inventories[other.number]?.some(y=>!y.is_spare&&y.part_num===x.part_num&&String(y.color_id)===String(x.color_id))).map(other=>other.number).filter((v,i,a)=>a.indexOf(v)===i);return `<tr style="${checked?"opacity:.52":""}"><td><button class="btn ${checked?"good":""}" onclick='togglePartCheck(${JSON.stringify(s.key)},${JSON.stringify(x)})'>${checked?"✓":"○"}</button></td><td>${x.image?`<button class="part-image-button" onclick='showPartImage(${JSON.stringify(x.image)},${JSON.stringify(x.part_name||x.part_num)})'><img class="thumb part-thumb-large" src="${esc(x.image)}" alt=""></button>`:`<div class="thumb part-thumb-large" style="display:grid;place-items:center">🧩</div>`}</td><td><button class="part-link" onclick='openPartExplorer(${JSON.stringify({part_num:x.part_num,part_name:x.part_name,color_name:x.color_name,color_id:x.color_id,image:x.image,total:x.quantity})},${JSON.stringify(s.key)})'><b>${esc(x.part_name||x.part_num)}</b><br><span class="small">#${esc(x.part_num)} · passende Sets anzeigen</span></button></td><td>${esc(x.color_name||"—")}</td><td><b>${x.quantity}</b></td><td><b>${Number(findLoosePartForInventoryItem(x)?.allocations?.[s.key])||0}</b> / ${x.quantity}</td><td class="small">${esc(matches.slice(0,8).join(", "))}${matches.length>8?` … +${matches.length-8}`:""}</td></tr>`}).join("")}</table></div>`:`<div class="empty">Keine passenden Teile gefunden.</div>`);
 }
 
 let pendingPhoto="";
@@ -1984,7 +2193,7 @@ function usePhotoForCatalogPart(x){
    closeModal();save();go("parts");
    return;
  }
- db.parts.push({id:uid(),name:x.part_name||x.part_num,number:x.part_num,color:x.color_name||"",qty:1,loc:"",image:pendingPhoto,sets:x.sets.map(s=>String(s).split(" ")[0])});
+ db.parts.push({id:uid(),name:x.part_name||x.part_num,number:x.part_num,color:x.color_name||"",qty:1,loc:"",image:pendingPhoto,sets:x.sets.map(s=>String(s).split(" ")[0]),allocations:{}});
  closeModal();save();go("parts");
 }
 function savePhotoAsLoosePart(){
@@ -2057,7 +2266,7 @@ function renderStatistics(){
   </div>`;
 }
 function renderLocations(){
-  const el=$("locationsGrid"); if(!el)return;
+  const el=$("locationsTable"); if(!el)return;
   if(!db.locations.length){
     el.innerHTML=`<div class="empty">Noch keine Lagerplätze. Lege z. B. Schrank A → Box 03 → Fach 07 an.</div>`;
     return;
@@ -2075,7 +2284,7 @@ function renderLocations(){
       </div>
       <div style="margin-top:14px">
         <b>Lose Teile</b>
-        ${parts.length?`<div style="margin-top:7px">${parts.map(p=>`<button class="btn" style="width:100%;text-align:left;margin-bottom:6px" onclick="openPartModal('${p.id}')"><b>${esc(p.name)}</b> · ${Number(p.qty)||0}× <span class="small">#${esc(p.number)} · ${esc(partNeedText(p))}</span></button>`).join("")}</div>`:`<div class="small" style="margin-top:6px">Keine losen Teile hier.</div>`}
+        ${parts.length?`<div style="margin-top:7px">${parts.map(p=>`<button class="btn" style="width:100%;text-align:left;margin-bottom:6px" onclick="openPartModal('${p.id}')"><b>${esc(p.name)}</b> · ${Number(p.qty)||0}× <span class="small">#${esc(p.number)} · ${esc(partNeedText(p))}${allocationText(p)?` · ${esc(allocationText(p))}`:""}</span></button>`).join("")}</div>`:`<div class="small" style="margin-top:6px">Keine losen Teile hier.</div>`}
       </div>
     </div>`;
   }).join("");
@@ -2140,22 +2349,20 @@ function commitManualSet(st){
  go("sets");
 }
 function openPartModal(id){
-  let p=db.parts.find(x=>x.id===id)||{name:"",number:"",color:"",qty:1,loc:"",image:"",sets:[]};
+  let p=db.parts.find(x=>x.id===id)||{name:"",number:"",color:"",qty:1,loc:"",image:"",sets:[],allocations:{}};
   const summary=id?partNeedText(p):"";
   modal(`<h2>${id?"Loses Teil bearbeiten":"Loses Teil hinzufügen"}</h2>
   ${id?`<div class="panel" style="margin-bottom:14px;padding:12px"><b>Mengenvergleich</b><div class="small" style="margin-top:4px">${esc(summary)}</div></div>`:""}
-  <form onsubmit="savePart(event,'${id||""}')">
+  <form data-part-id="${esc(id||"")}" onsubmit="savePart(event,'${id||""}')">
     <div class="formgrid">
       <div class="field"><label>Name</label><input class="input" name="name" required value="${esc(p.name)}"></div>
-      <div class="field"><label>Teilnummer</label><input class="input" name="number" required value="${esc(p.number)}"></div>
-      <div class="field"><label>Farbe</label><input class="input" name="color" value="${esc(p.color)}"></div>
-      <div class="field"><label>Wie viele hast du?</label><input class="input" name="qty" type="number" min="0" value="${Number(p.qty)||0}"></div>
+      <div class="field"><label>Teilnummer</label><input class="input" name="number" required value="${esc(p.number)}" oninput="refreshLoosePartMatchPanel()"></div>
+      <div class="field"><label>Farbe</label><input class="input" name="color" value="${esc(p.color)}" oninput="refreshLoosePartMatchPanel()"></div>
+      <div class="field"><label>Wie viele hast du?</label><input class="input" name="qty" type="number" min="0" value="${Number(p.qty)||0}" oninput="refreshLoosePartMatchPanel()"></div>
       <div class="field"><label>Lagerplatz</label><select class="select" name="loc"><option value="">—</option>${db.locations.map(l=>`<option value="${l.id}" ${p.loc===l.id?"selected":""}>${esc(locName(l.id))}</option>`).join("")}</select></div>
       <div class="field"><label>Bild-URL</label><input class="input" name="image" value="${esc(p.image||"")}"></div>
       <div class="field" style="grid-column:1/-1">
-        <label>Mit Sets verknüpfen</label>
-        <div class="small" style="margin:4px 0 8px">Wenn du nichts auswählst, zeigt Piecebook automatisch alle geladenen Sets, in denen Teilnummer und Farbe vorkommen.</div>
-        <div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:4px 10px">${renderSetLinkOptions(p)||'<div class="small" style="padding:8px">Noch keine Sets vorhanden.</div>'}</div>
+        <div id="loosePartMatchPanel" class="panel" style="padding:12px"></div>
       </div>
     </div>
     <div class="actions" style="margin-top:12px">
@@ -2163,21 +2370,45 @@ function openPartModal(id){
       ${id?`<button type="button" class="btn danger" onclick="deleteLoosePart('${id}')">Loses Teil löschen</button>`:""}
     </div>
   </form>`);
+  refreshLoosePartMatchPanel();
 }
 function savePart(e,id){
   e.preventDefault();
   let f=new FormData(e.target);
-  const sets=f.getAll("linkedSet").map(String);
+  const number=String(f.get("number")||"").trim();
+  const color=String(f.get("color")||"").trim();
+  const qty=Math.max(0,+f.get("qty")||0);
   let old=db.parts.find(x=>x.id===id);
+
+  const allocations={};
+  for(const [k,v] of f.entries()){
+    if(!String(k).startsWith("alloc::"))continue;
+    const setKey=String(k).slice(7);
+    const q=Math.max(0,Number(v)||0);
+    if(q>0)allocations[setKey]=q;
+  }
+
+  // Keep total allocated quantity at or below the number of loose pieces actually owned.
+  let remaining=qty;
+  for(const key of Object.keys(allocations)){
+    const q=Math.min(allocations[key],remaining);
+    if(q>0) allocations[key]=q;
+    else delete allocations[key];
+    remaining-=q;
+  }
+
+  const linkedNumbers=[...new Set(Object.keys(allocations).map(key=>db.sets.find(s=>s.key===key)?.number).filter(Boolean).map(String))];
+
   let obj={
     id:id||uid(),
     name:f.get("name"),
-    number:f.get("number"),
-    color:f.get("color"),
-    qty:Math.max(0,+f.get("qty")||0),
+    number,
+    color,
+    qty,
     loc:f.get("loc"),
     image:f.get("image")||(old?.image||""),
-    sets
+    sets:linkedNumbers,
+    allocations
   };
   let i=db.parts.findIndex(x=>x.id===obj.id);
   if(i>=0)db.parts[i]=obj;else db.parts.push(obj);
