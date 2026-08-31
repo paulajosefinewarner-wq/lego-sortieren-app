@@ -713,7 +713,7 @@ html,body,button,input,select,textarea{
 .settings-backup-note.show{display:block}
 
 
-/* ===== Piecebook V47 – Themensuche ohne Hinweistext ===== */
+/* ===== Piecebook V48 – Themensuche scheduleCloudSave-Fix ===== */
 /* Lager + Mengen aus V36 unverändert */
 .qty-ok{font-size:12px;color:#3d6b46}
 .storage-count{font-variant-numeric:tabular-nums}
@@ -1909,7 +1909,6 @@ async function loadAllSetThemes(){
       // Save progress often, so nothing is lost if the app is closed.
       if(done%5===0){
         localSaveOnly();
-        scheduleCloudSave?.();
       }
 
       if(done%10===0)renderSets();
